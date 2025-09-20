@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Service Management & Capability Matrix</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Unified Service Management prototype with Mode/Role capability matrix">
+<style>
+:root{
+  /* Palette */
+  --bg:#f4f7f9;--panel:#ffffff;--panel-alt:#fbfdfe;
+  --border:#d7dde2;--border-soft:#e4e9ed;
+  --text:#1f2d3d;--text-med:#384656;--text-light:#5b6b7c;
+  --accent:#297fce;--accent-h:#1f6fb6;
+  --success:#1f8d47;--warn:#d8a10d;--danger:#d82f2f;--violet:#8e44ad;
+  --gray-pill:#95a2ae;--blue:#2474c7;
+  --focus:0 0 0 3px rgba(41,127,206,.38);
+  --radius-sm:6px;--radius:12px;--radius-lg:16px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+  font-size:15px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);line-height:1.45;}
+h1,h2,h3{margin:0;font-weight:600;}
+a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
+/* Layout */
+.app-shell{max-width:1400px;margin:0 auto;padding:1.4rem 1.2rem 3rem;}
+.nav-tabs{display:flex;gap:.35rem;flex-wrap:wrap;margin:0 0 1.1rem;padding:0;list-style:none;}
+.nav-tabs button{background:#e9eef2;border:1px solid var(--border);color:var(--text-med);padding:.6rem 1rem;font-size:.75rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:var(--radius-sm);cursor:pointer;transition:.18s;}
+.nav-tabs button[aria-selected="true"]{background:var(--accent);color:#fff;border-color:var(--accent);}
+.nav-tabs button:hover:not([aria-selected="true"]){background:#dfe5e9;}
+.nav-tabs button:focus-visible{outline:none;box-shadow:var(--focus);}
+.section{display:none;animation:fade .25s ease;}
+.section.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* Shared badges */
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:999px;font-size:.55rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#fff;}
+.badge.Fully{background:#2ecc71;}
+.badge.Partially{background:#f1c40f;color:#222;}
+.badge.Restricted{background:#e74c3c;}
+.badge.Unmanaged{background:var(--violet);}
+.badge.Admin{background:#34495e;}
+.badge.Read{background:#7f8c8d;}
+
+/* Panels */
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem 1.75rem;box-shadow:0 4px 12px -4px rgba(0,0,0,.08);position:relative;}
+.panel + .panel{margin-top:1.6rem;}
+.panel-header{display:flex;flex-wrap:wrap;align-items:center;gap:.65rem;margin:0 0 1.1rem;}
+.panel-header h2{font-size:1.15rem;}
+
+/* Controls */
+.controls{display:flex;flex-wrap:wrap;gap:1rem;margin:0 0 1.1rem;}
+.control{display:flex;flex-direction:column;gap:4px;font-size:.6rem;text-transform:uppercase;font-weight:600;color:var(--text-light);}
+.control select{padding:.5rem .65rem;border:1px solid var(--border);border-radius:8px;font-size:.8rem;background:#fff;min-width:170px;}
+.control select:focus{outline:none;box-shadow:var(--focus);border-color:var(--accent);}
+.button{--b-bg:#eceff2;--b-col:#1f2d3d;--b-bg-h:#e1e6ea;--b-bg-d:#ccd2d7;display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1rem;border:1px solid var(--border);background:var(--b-bg);color:var(--b-col);font-size:.75rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:9px;cursor:pointer;transition:.18s;}
+.button:hover:not(:disabled){background:var(--b-bg-h);}
+.button:disabled{opacity:.55;cursor:not-allowed;background:var(--b-bg-d);}
+.button-primary{--b-bg:var(--accent);--b-col:#fff;--b-bg-h:var(--accent-h);border-color:var(--accent);}
+.button-primary:disabled{--b-bg:#6ca5d2;}
+.button:focus-visible{outline:none;box-shadow:var(--focus);}
+
+/* Service Manager Table */
+.table-wrapper{margin-top:1rem;border:1px solid var(--border);border-radius:14px;overflow:auto;max-height:470px;background:#fff;}
+.service-table{width:100%;border-collapse:collapse;min-width:820px;font-size:.78rem;}
+.service-table th,.service-table td{padding:11px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border-soft);}
+.service-table th{background:#f1f4f6;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;position:sticky;top:0;z-index:2;}
+.service-table tbody tr:hover{background:#f9fbfc;}
+.service-details{display:flex;flex-direction:column;gap:4px;}
+.service-details .name{font-weight:600;}
+.service-details .description{font-size:.7rem;color:var(--text-light);line-height:1.25;}
+.service-details .last-updated{font-size:.55rem;color:#6a7b8b;letter-spacing:.06em;text-transform:uppercase;}
+.inline-pill-btn{border:none;border-radius:18px;padding:.42rem .9rem;font-size:.58rem;letter-spacing:.05em;text-transform:uppercase;font-weight:600;cursor:pointer;min-width:80px;display:inline-flex;align-items:center;justify-content:center;transition:.18s;}
+.inline-pill-btn.enabled{background:var(--success);color:#fff;}
+.inline-pill-btn.disabled{background:#9aa7b2;color:#fff;}
+.inline-pill-btn[aria-disabled="true"]{opacity:.55;cursor:not-allowed;}
+.inline-pill-btn:focus-visible{outline:none;box-shadow:var(--focus);}
+.actions{display:flex;gap:.45rem;}
+.icon-btn{--i-bg:#e9eef2;--i-bg-h:#dbe2e8;--i-col:#2b4258;width:34px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--i-bg);color:var(--i-col);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:.16s;}
+.icon-btn.edit{--i-bg:#1e80c9;--i-bg-h:#1b71b2;--i-col:#fff;border-color:#1e80c9;}
+.icon-btn.delete{--i-bg:#d54b4b;--i-bg-h:#c24040;--i-col:#fff;border-color:#d54b4b;}
+.icon-btn:hover:not(:disabled){background:var(--i-bg-h);}
+.icon-btn:disabled{opacity:.4;cursor:not-allowed;}
+.icon-btn:focus-visible{outline:none;box-shadow:var(--focus);}
+.icon-btn svg{width:17px;height:17px;pointer-events:none;}
+.checkbox-master{transform:translateY(2px);}
+.actions-bar{display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-top:.9rem;padding-top:.8rem;border-top:1px solid var(--border-soft);}
+.flash{font-size:.65rem;font-weight:600;color:var(--success);opacity:0;transition:.3s;}
+.flash.visible{opacity:1;}
+.badge-row{display:flex;gap:.5rem;flex-wrap:wrap;}
+.small-note{font-size:.6rem;color:var(--text-light);}
+.dirty{color:var(--warn);font-weight:600;}
+/* Modal */
+.modal{display:none;position:fixed;inset:0;z-index:1400;background:rgba(25,38,52,.55);justify-content:center;align-items:flex-start;overflow:auto;padding:4vh 1rem 4rem;}
+.modal[aria-hidden="false"]{display:flex;}
+.dialog{background:#fff;border:1px solid var(--border);border-radius:18px;max-width:560px;width:100%;padding:1.5rem 1.6rem 1.55rem;box-shadow:0 18px 34px -10px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:1.05rem;position:relative;}
+.dialog header{display:flex;align-items:center;justify-content:space-between;margin:0;}
+.dialog h3{font-size:1.05rem;}
+.close-btn{background:#eef2f5;border:1px solid var(--border);width:36px;height:36px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.close-btn:hover{background:#e1e8ec;}
+.close-btn:focus-visible{outline:none;box-shadow:var(--focus);}
+.readonly-overlay{position:absolute;inset:0;background:rgba(255,255,255,.55);border-radius:18px;display:none;}
+.dialog.readonly .readonly-overlay{display:block;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group label{font-size:.6rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-light);}
+textarea{resize:vertical;min-height:110px;padding:.7rem .75rem;border:1px solid var(--border);border-radius:10px;font-size:.78rem;line-height:1.35;font-family:inherit;}
+textarea[readonly]{background:#f3f5f7;}
+.toggle-switch{position:relative;display:inline-block;width:54px;height:28px;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-switch span{position:absolute;inset:0;background:#b3bfc9;border-radius:28px;cursor:pointer;transition:.25s;}
+.toggle-switch span:before{content:"";position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 2px 4px rgba(0,0,0,.25);}
+.toggle-switch input:checked + span{background:var(--success);}
+.toggle-switch input:checked + span:before{transform:translateX(26px);}
+.dialog-actions{display:flex;justify-content:flex-end;gap:.7rem;}
+/* Matrix */
+.matrix-controls{display:flex;flex-wrap:wrap;gap:.75rem;margin:0 0 1.05rem;}
+.toggle-cols{display:flex;flex-wrap:wrap;gap:.75rem;margin-left:auto;}
+.toggle-cols label{display:flex;align-items:center;gap:.35rem;font-size:.58rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:var(--text-light);}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:14px;background:#fff;max-height:540px;}
+.matrix-table{border-collapse:separate;border-spacing:0;width:100%;min-width:950px;font-size:.72rem;}
+.matrix-table thead th{position:sticky;top:0;background:#f1f4f6;border-bottom:1px solid var(--border);font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;padding:7px 10px;z-index:3;}
+.matrix-table td,.matrix-table th{padding:7px 10px;border-bottom:1px solid var(--border-soft);text-align:center;vertical-align:middle;}
+.matrix-table tbody tr:hover{background:#f8fafc;}
+.matrix-table th.mode-col{position:sticky;left:0;background:#f9fbfc;font-weight:600;text-align:left;z-index:2;width:180px;}
+.matrix-table tbody tr:hover th.mode-col{background:#eef5fa;}
+.status-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font-size:.75rem;font-weight:700;line-height:1;}
+.status-icon.avail{background:var(--success);color:#fff;}
+.status-icon.cond{background:var(--blue);color:#fff;}
+.status-icon.na{background:var(--gray-pill);color:#fff;}
+.hideable[data-hidden="true"]{display:none;}
+.legend{display:flex;flex-wrap:wrap;gap:1rem;list-style:none;margin:.2rem 0 1rem;padding:0;font-size:.62rem;color:var(--text-light);}
+.compact-note{margin:.9rem 0 0;font-size:.56rem;line-height:1.3;color:var(--text-light);}
+.filter-empty{display:none;margin:.8rem 0 0;font-size:.7rem;font-weight:600;color:var(--danger);}
+.btn-reset{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:.45rem .75rem;font-size:.58rem;font-weight:600;letter-spacing:.05em;cursor:pointer;}
+.btn-reset:disabled{opacity:.5;cursor:not-allowed;}
+.btn-reset:focus-visible{outline:none;box-shadow:var(--focus);}
+.role-col{text-align:left;font-weight:600;}
+/* Utility */
+.visually-hidden{position:absolute!important;clip:rect(1px,1px,1px,1px);clip-path:inset(50%);width:1px;height:1px;overflow:hidden;white-space:nowrap;}
+:focus-visible{outline:none;box-shadow:var(--focus);}
+@media (max-width:960px){
+  .service-table{min-width:700px;}
+  .matrix-table{min-width:880px;}
+}
+@media (max-width:720px){
+  .toggle-cols{flex-direction:column;align-items:flex-start;}
+  .controls{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header style="margin:0 0 1.2rem;">
+    <h1 style="font-size:1.8rem;text-align:center;margin:0 0 .4rem;">Service Management & Capability Reference</h1>
+    <p style="text-align:center;font-size:.85rem;color:var(--text-light);margin:0;">Unified prototype showing interactive Service Manager and Mode / Role gating matrix (client-side only)</p>
+  </header>
+
+  <ul class="nav-tabs" role="tablist">
+    <li><button id="tab-services" role="tab" aria-selected="true" aria-controls="panel-services">Service Manager</button></li>
+    <li><button id="tab-matrix" role="tab" aria-selected="false" aria-controls="panel-matrix">Capability Matrix</button></li>
+  </ul>
+
+  <!-- SERVICE MANAGER -->
+  <section id="panel-services" class="section active" role="tabpanel" aria-labelledby="tab-services">
+    <div class="panel">
+      <div class="panel-header">
+        <h2>Service Manager</h2>
+        <div class="badge-row">
+          <span id="mode-badge" class="badge Fully" aria-live="polite">Fully Managed</span>
+          <span id="role-badge" class="badge Admin" aria-live="polite">Admin</span>
+          <span id="dirty-indicator" class="dirty" hidden>Unsaved</span>
+        </div>
+      </div>
+
+      <div class="controls" role="group" aria-label="Context controls">
+        <div class="control">
+          <label for="mode-select">Mode</label>
+            <select id="mode-select" aria-describedby="mode-hint">
+              <option value="Fully Managed" selected>Fully Managed</option>
+              <option value="Partially Managed">Partially Managed</option>
+              <option value="Restricted">Restricted</option>
+              <option value="Unmanaged">Unmanaged</option>
+            </select>
+          <div id="mode-hint" class="visually-hidden">Switching mode reloads baseline services; unsaved changes may be lost.</div>
+        </div>
+        <div class="control">
+          <label for="role-select">Role</label>
+          <select id="role-select" aria-describedby="role-hint">
+            <option value="Admin" selected>Admin</option>
+            <option value="Read Only">Read Only</option>
+          </select>
+          <div id="role-hint" class="visually-hidden">Read Only role cannot modify services.</div>
+        </div>
+        <div class="control" style="min-width:auto;">
+          <label class="visually-hidden" for="toggle-sbl">Enable or disable listing</label>
+          <button id="toggle-sbl" class="button button-primary" aria-pressed="false">Enable Service Listing</button>
+        </div>
+        <div class="control" style="flex:1 1 240px;max-width:340px;">
+          <label>Guide</label>
+          <div style="font-size:.62rem;line-height:1.25;color:var(--text-light);background:var(--panel-alt);border:1px solid var(--border-soft);padding:.55rem .65rem;border-radius:8px;">
+            Admin + (Partially/Unmanaged) can toggle and (Unmanaged) delete. Fully / Restricted are read configurations.
+          </div>
+        </div>
+      </div>
+
+      <div id="table-wrapper" class="table-wrapper" aria-label="Services table" hidden>
+        <table class="service-table">
+          <thead>
+            <tr>
+              <th scope="col">Service</th>
+              <th scope="col">Enabled <input id="enable-all-toggle" class="checkbox-master" type="checkbox" aria-label="Enable or disable all services"></th>
+              <th scope="col" id="deploy-col-header">Deployed</th>
+              <th scope="col" id="actions-col-header">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="service-list"></tbody>
+        </table>
+      </div>
+
+      <div id="actions-bar" class="actions-bar" aria-live="polite">
+        <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;">
+          <button id="save-btn" class="button button-primary" disabled>Save Changes</button>
+          <span id="save-reason" class="small-note" hidden></span>
+          <span id="flash" class="flash" aria-live="polite"></span>
+        </div>
+        <span class="small-note">Cmd/Ctrl + S to save</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- MATRIX -->
+  <section id="panel-matrix" class="section" role="tabpanel" aria-labelledby="tab-matrix">
+    <div class="panel">
+      <div class="panel-header">
+        <h2>Capability Matrix</h2>
+      </div>
+
+      <div class="matrix-controls" role="group" aria-label="Matrix Filters">
+        <div class="control">
+          <label for="filter-mode">Mode</label>
+          <select id="filter-mode">
+            <option value="all">All Modes</option>
+            <option value="Fully">Fully Managed</option>
+            <option value="Partially">Partially Managed</option>
+            <option value="Restricted">Restricted</option>
+            <option value="Unmanaged">Unmanaged</option>
+          </select>
+        </div>
+        <div class="control">
+          <label for="filter-role">Role</label>
+          <select id="filter-role">
+            <option value="all">All Roles</option>
+            <option value="Admin">Admin</option>
+            <option value="Read">Read Only</option>
+          </select>
+        </div>
+        <div class="toggle-cols" aria-label="Toggle columns">
+          <label><input type="checkbox" data-col="bulk" checked> Bulk</label>
+          <label><input type="checkbox" data-col="edit" checked> Edit</label>
+          <label><input type="checkbox" data-col="delete" checked> Delete</label>
+          <label><input type="checkbox" data-col="save" checked> Save</label>
+          <label><input type="checkbox" data-col="modal" checked> Modal</label>
+          <label><input type="checkbox" data-col="deploy" checked> Deploy</label>
+            <label><input type="checkbox" data-col="actions" checked> Actions</label>
+          <label><input type="checkbox" data-col="enable" checked> Enable Btn</label>
+          <button id="reset-filters" class="btn-reset" disabled>Reset</button>
+        </div>
+      </div>
+
+      <ul class="legend" aria-label="Legend">
+        <li><span class="status-icon avail" aria-hidden="true">✓</span> Enabled / Shown</li>
+        <li><span class="status-icon cond" aria-hidden="true">●</span> Conditional (dirty/context)</li>
+        <li><span class="status-icon na" aria-hidden="true">—</span> Hidden / Disabled</li>
+      </ul>
+
+      <div class="table-wrap" aria-live="polite">
+        <table id="capability-table" class="matrix-table">
+          <thead>
+            <tr>
+              <th class="mode-col" scope="col">Mode</th>
+              <th scope="col">Role</th>
+              <th scope="col">Per‑Service Toggle</th>
+              <th scope="col" data-col="bulk">Bulk Toggle</th>
+              <th scope="col" data-col="edit">Edit Action</th>
+              <th scope="col" data-col="delete">Delete Action</th>
+              <th scope="col" data-col="save">Save Changes</th>
+              <th scope="col" data-col="modal">Modal Save</th>
+              <th scope="col" data-col="deploy">Deploy Column</th>
+              <th scope="col" data-col="actions">Actions Column</th>
+              <th scope="col" data-col="enable">Enable Listing Button</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Fully -->
+            <tr data-mode="Fully" data-role="Admin">
+              <th scope="rowgroup" class="mode-col"><span class="badge Fully">Fully</span> Fully Managed</th>
+              <td class="role-col">Admin</td>
+              <td><span class="status-icon na" aria-label="Per-service toggle: Not available">—</span></td>
+              <td data-col="bulk"><span class="status-icon na" aria-label="Bulk toggle: Not available">—</span></td>
+              <td data-col="edit"><span class="status-icon na" aria-label="Edit action: Hidden">—</span></td>
+              <td data-col="delete"><span class="status-icon na" aria-label="Delete action: Hidden">—</span></td>
+              <td data-col="save"><span class="status-icon na" aria-label="Save: Hidden">—</span></td>
+              <td data-col="modal"><span class="status-icon na" aria-label="Modal save: Disabled">—</span></td>
+              <td data-col="deploy"><span class="status-icon na" aria-label="Deploy column: Hidden">—</span></td>
+              <td data-col="actions"><span class="status-icon na" aria-label="Actions column: Hidden">—</span></td>
+              <td data-col="enable"><span class="status-icon avail" aria-label="Enable listing button: Enabled">✓</span></td>
+            </tr>
+            <tr data-mode="Fully" data-role="Read">
+              <th scope="rowgroup" class="mode-col" style="display:none;" aria-hidden="true"><span class="badge Fully">Fully</span> Fully Managed</th>
+              <td class="role-col">Read Only</td>
+              <td><span class="status-icon na">—</span></td>
+              <td data-col="bulk"><span class="status-icon na">—</span></td>
+              <td data-col="edit"><span class="status-icon na">—</span></td>
+              <td data-col="delete"><span class="status-icon na">—</span></td>
+              <td data-col="save"><span class="status-icon na">—</span></td>
+              <td data-col="modal"><span class="status-icon na">—</span></td>
+              <td data-col="deploy"><span class="status-icon na">—</span></td>
+              <td data-col="actions"><span class="status-icon na">—</span></td>
+              <td data-col="enable"><span class="status-icon na">—</span></td>
+            </tr>
+            <!-- Partially -->
+            <tr data-mode="Partially" data-role="Admin">
+              <th scope="rowgroup" class="mode-col"><span class="badge Partially">Partial</span> Partially Managed</th>
+              <td class="role-col">Admin</td>
+              <td><span class="status-icon avail" aria-label="Per-service toggle: Enabled">✓</span></td>
+              <td data-col="bulk"><span class="status-icon avail" aria-label="Bulk toggle: Enabled">✓</span></td>
+              <td data-col="edit"><span class="status-icon avail" aria-label="Edit action: Enabled">✓</span></td>
+              <td data-col="delete"><span class="status-icon na" aria-label="Delete action: Hidden">—</span></td>
+              <td data-col="save"><span class="status-icon cond" aria-label="Save: Conditional (dirty)">●</span></td>
+              <td data-col="modal"><span class="status-icon avail" aria-label="Modal save: Enabled">✓</span></td>
+              <td data-col="deploy"><span class="status-icon avail" aria-label="Deploy column: Shown">✓</span></td>
+              <td data-col="actions"><span class="status-icon avail" aria-label="Actions column: Shown">✓</span></td>
+              <td data-col="enable"><span class="status-icon avail" aria-label="Enable listing button: Enabled">✓</span></td>
+            </tr>
+            <tr data-mode="Partially" data-role="Read">
+              <th scope="rowgroup" class="mode-col" style="display:none;" aria-hidden="true"><span class="badge Partially">Partial</span> Partially Managed</th>
+              <td class="role-col">Read Only</td>
+              <td><span class="status-icon na">—</span></td>
+              <td data-col="bulk"><span class="status-icon na">—</span></td>
+              <td data-col="edit"><span class="status-icon na">—</span></td>
+              <td data-col="delete"><span class="status-icon na">—</span></td>
+              <td data-col="save"><span class="status-icon na">—</span></td>
+              <td data-col="modal"><span class="status-icon na">—</span></td>
+              <td data-col="deploy"><span class="status-icon avail">✓</span></td>
+              <td data-col="actions"><span class="status-icon na">—</span></td>
+              <td data-col="enable"><span class="status-icon na">—</span></td>
+            </tr>
+            <!-- Restricted -->
+            <tr data-mode="Restricted" data-role="Admin">
+              <th scope="rowgroup" class="mode-col"><span class="badge Restricted">Restrict</span> Restricted</th>
+              <td class="role-col">Admin</td>
+              <td><span class="status-icon na">—</span></td>
+              <td data-col="bulk"><span class="status-icon na">—</span></td>
+              <td data-col="edit"><span class="status-icon na">—</span></td>
+              <td data-col="delete"><span class="status-icon na">—</span></td>
+              <td data-col="save"><span class="status-icon na">—</span></td>
+              <td data-col="modal"><span class="status-icon na">—</span></td>
+              <td data-col="deploy"><span class="status-icon na">—</span></td>
+              <td data-col="actions"><span class="status-icon na">—</span></td>
+              <td data-col="enable"><span class="status-icon avail">✓</span></td>
+            </tr>
+            <tr data-mode="Restricted" data-role="Read">
+              <th scope="rowgroup" class="mode-col" style="display:none;" aria-hidden="true"><span class="badge Restricted">Restrict</span> Restricted</th>
+              <td class="role-col">Read Only</td>
+              <td><span class="status-icon na">—</span></td>
+              <td data-col="bulk"><span class="status-icon na">—</span></td>
+              <td data-col="edit"><span class="status-icon na">—</span></td>
+              <td data-col="delete"><span class="status-icon na">—</span></td>
+              <td data-col="save"><span class="status-icon na">—</span></td>
+              <td data-col="modal"><span class="status-icon na">—</span></td>
+              <td data-col="deploy"><span class="status-icon na">—</span></td>
+              <td data-col="actions"><span class="status-icon na">—</span></td>
+              <td data-col="enable"><span class="status-icon na">—</span></td>
+            </tr>
+            <!-- Unmanaged -->
+            <tr data-mode="Unmanaged" data-role="Admin">
+              <th scope="rowgroup" class="mode-col"><span class="badge Unmanaged">Unmanaged</span> Unmanaged</th>
+              <td class="role-col">Admin</td>
+              <td><span class="status-icon avail">✓</span></td>
+              <td data-col="bulk"><span class="status-icon avail">✓</span></td>
+              <td data-col="edit"><span class="status-icon avail">✓</span></td>
+              <td data-col="delete"><span class="status-icon avail">✓</span></td>
+              <td data-col="save"><span class="status-icon cond">●</span></td>
+              <td data-col="modal"><span class="status-icon avail">✓</span></td>
+              <td data-col="deploy"><span class="status-icon avail">✓</span></td>
+              <td data-col="actions"><span class="status-icon avail">✓</span></td>
+              <td data-col="enable"><span class="status-icon avail">✓</span></td>
+            </tr>
+            <tr data-mode="Unmanaged" data-role="Read">
+              <th scope="rowgroup" class="mode-col" style="display:none;" aria-hidden="true"><span class="badge Unmanaged">Unmanaged</span> Unmanaged</th>
+              <td class="role-col">Read Only</td>
+              <td><span class="status-icon na">—</span></td>
+              <td data-col="bulk"><span class="status-icon na">—</span></td>
+              <td data-col="edit"><span class="status-icon na">—</span></td>
+              <td data-col="delete"><span class="status-icon na">—</span></td>
+              <td data-col="save"><span class="status-icon na">—</span></td>
+              <td data-col="modal"><span class="status-icon na">—</span></td>
+              <td data-col="deploy"><span class="status-icon avail">✓</span></td>
+              <td data-col="actions"><span class="status-icon na">—</span></td>
+              <td data-col="enable"><span class="status-icon na">—</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="compact-note">
+        Conditional save = Admin in Partially / Unmanaged with unsaved changes. Deploy appears only in Partially & Unmanaged. Actions hidden for Fully, Restricted, or any Read Only. Modal Save follows per‑service toggle permission.
+      </p>
+      <div id="filter-empty" class="filter-empty" role="status" aria-live="polite">No rows match filters.</div>
+    </div>
+  </section>
+</div>
+
+<!-- Modal -->
+<div id="service-modal" class="modal" aria-hidden="true">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-desc" tabindex="-1">
+    <div class="readonly-overlay"></div>
+    <header>
+      <h3 id="modal-title">Edit Service</h3>
+      <button class="close-btn" type="button" id="modal-close-btn" aria-label="Close dialog">
+        <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="#2b4258" stroke-width="2" stroke-linecap="round" d="M5 5l14 14M19 5L5 19"/></svg>
+      </button>
+    </header>
+    <p id="modal-desc" class="visually-hidden">View or change service enabled state.</p>
+    <form id="service-form">
+      <input type="hidden" id="service-id">
+      <div class="form-group">
+        <label for="service-details-textarea">Service Details</label>
+        <textarea id="service-details-textarea" readonly aria-readonly="true"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="enabled-toggle">Enabled</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="enabled-toggle" aria-label="Enable or disable this service">
+          <span></span>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="button" id="modal-cancel-btn">Cancel</button>
+        <button type="submit" class="button button-primary" id="modal-save-btn">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Live regions -->
+<div id="live-assertive" class="visually-hidden" role="alert" aria-live="assertive"></div>
+<div id="live-polite" class="visually-hidden" aria-live="polite"></div>
+
+<script>
+/* Tab Switch */
+(function(){
+  const tabs=[{btn:'tab-services',panel:'panel-services'},{btn:'tab-matrix',panel:'panel-matrix'}];
+  tabs.forEach(t=>{
+    const b=document.getElementById(t.btn);const p=document.getElementById(t.panel);
+    b.addEventListener('click',()=>{
+      tabs.forEach(o=>{
+        const ob=document.getElementById(o.btn),op=document.getElementById(o.panel);
+        const active=o.btn===t.btn;
+        ob.setAttribute('aria-selected',active);
+        op.classList.toggle('active',active);
+      });
+      b.focus();
+    });
+  });
+})();
+
+/* Service Manager Logic */
+document.addEventListener('DOMContentLoaded',()=>{
+  const state={mode:'Fully Managed',role:'Admin',enabled:false,dirty:false,services:[]};
+  const $=id=>document.getElementById(id);
+  const modeSelect=$('mode-select'),roleSelect=$('role-select'),
+        modeBadge=$('mode-badge'),roleBadge=$('role-badge'),
+        toggleBtn=$('toggle-sbl'),tableWrapper=$('table-wrapper'),
+        serviceList=$('service-list'),enableAll=$('enable-all-toggle'),
+        actionsBar=$('actions-bar'),saveBtn=$('save-btn'),saveReason=$('save-reason'),
+        flashEl=$('flash'),dirtyInd=$('dirty-indicator'),
+        modal=$('service-modal'),dialog=modal.querySelector('.dialog'),
+        modalClose=$('modal-close-btn'),modalCancel=$('modal-cancel-btn'),
+        serviceIdInput=$('service-id'),serviceDetails=$('service-details-textarea'),
+        enabledToggle=$('enabled-toggle'),modalSave=$('modal-save-btn'),
+        livePolite=$('live-polite'),liveAssertive=$('live-assertive'),
+        deployHeader=$('deploy-col-header'),actionsHeader=$('actions-col-header');
+  let lastFocus=null,idSeq=0;
+  const dayMs=86400000;
+  const randomPast=()=>new Date(Date.now()-Math.floor(Math.random()*28)*dayMs).toISOString();
+  const make=(n,d,en,de)=>({id:++idSeq,name:n,description:d,lastUpdated:randomPast(),enabled:en,deploy:de,lastRunDate:de?randomPast():null});
+  const catalog={
+    'Fully Managed':[make('Identity Core','Central auth & SSO integration.',true,true),make('Policy Engine','Org policy evaluation layer.',true,true),make('Billing Reconciliation','Usage to invoice mapping.',true,false),make('Compliance Scanner','Baseline compliance checks.',true,true),make('Secrets Vault','Managed secret storage.',true,true),make('Geo Replicator','Cross-region replication service.',false,false)],
+    'Partially Managed':[make('Notification Service','Email & SMS dispatch.',false,false),make('Report Generator','Generates scheduled reports.',true,false),make('Cache Service','Low-latency data caching.',true,false),make('Image Optimizer','On-demand media transforms.',false,false),make('Search Indexer','Incremental indexing tasks.',true,true)],
+    'Restricted':[make('Access Registry','Registry of access grants.',true,true),make('Audit Log Stream','Immutable audit trail exporter.',true,true),make('Tag Normalizer','Enforces resource tagging.',false,false)],
+    'Unmanaged':[make('Custom Analytics','Experimental analytics stack.',true,false),make('Webhook Relay','Third-party webhook relay.',false,false),make('Data Sandbox','Isolated data exploration.',true,false),make('Prototype ML','Model experimentation area.',false,false),make('Internal Dashboard','Legacy operational dashboard.',true,false)]
+  };
+  const fmtFull=iso=>iso?new Date(iso).toLocaleDateString()+" "+new Date(iso).toLocaleTimeString():'';
+  const rel=iso=>{if(!iso)return'';const diff=Date.now()-new Date(iso).getTime();const s=Math.floor(diff/1000);if(s<60)return s+'s ago';const m=s/60|0;if(m<60)return m+'m ago';const h=m/60|0;if(h<24)return h+'h ago';const d=h/24|0;return d+'d ago';};
+  const clone=(m)=>catalog[m].map(s=>({...s}));
+  function caps(){
+    const readOnly=state.role==='Read Only';
+    const fully=state.mode==='Fully Managed';
+    const restricted=state.mode==='Restricted';
+    const canToggle=!readOnly && !fully && !restricted;
+    return {
+      readOnly,fully,restricted,
+      canToggle,
+      canEdit:canToggle,
+      canDelete:canToggle && state.mode==='Unmanaged',
+      showDeploy:!(fully||restricted),
+      showActions:!(fully||restricted||readOnly),
+      allowSave: state.enabled && !readOnly && (state.mode==='Partially Managed'||state.mode==='Unmanaged')
+    };
+  }
+  function updateBadges(){
+    modeBadge.textContent=state.mode;
+    modeBadge.className='badge '+state.mode.split(' ')[0];
+    roleBadge.textContent=state.role;
+    roleBadge.className='badge '+(state.role==='Read Only'?'Read':'Admin');
+  }
+  function render(){
+    if(!state.enabled){serviceList.innerHTML='';return;}
+    serviceList.innerHTML=state.services.map(s=>`
+      <tr data-id="${s.id}">
+        <td>
+          <div class="service-details">
+            <span class="name">${s.name}</span>
+            <span class="description">${s.description}</span>
+            <span class="last-updated" title="${fmtFull(s.lastUpdated)}">Updated: ${rel(s.lastUpdated)}</span>
+          </div>
+        </td>
+        <td>
+          <button class="inline-pill-btn ${s.enabled?'enabled':'disabled'}" type="button" data-action="toggle" data-id="${s.id}" aria-pressed="${s.enabled}" aria-label="Toggle ${s.name} ${s.enabled?'enabled':'disabled'} state">${s.enabled?'Enabled':'Disabled'}</button>
+        </td>
+        <td class="deploy-cell">
+          ${s.deploy?`<div style="display:flex;flex-direction:column;gap:2px;">
+            <span class="last-updated" style="font-size:.55rem;color:${'var(--success)'}">✓ Deploy</span>
+            ${s.lastRunDate?`<span class="last-updated" title="${fmtFull(s.lastRunDate)}">Run: ${rel(s.lastRunDate)}</span>`:''}
+          </div>`:'—'}
+        </td>
+        <td class="actions-cell">
+          <div class="actions">
+            <button class="icon-btn edit" data-action="edit" data-id="${s.id}" aria-label="Edit ${s.name}">
+              <svg viewBox="0 0 24 24"><path fill="#ffffff" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path fill="#ffffff" d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            </button>
+            <button class="icon-btn delete" data-action="delete" data-id="${s.id}" aria-label="Delete ${s.name}">
+              <svg viewBox="0 0 24 24"><path fill="#ffffff" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>`).join('');
+    applyCaps();
+  }
+  function applyCaps(){
+    const c=caps();
+    deployHeader.hidden=!c.showDeploy;
+    actionsHeader.hidden=!c.showActions;
+    serviceList.querySelectorAll('.deploy-cell').forEach(td=>td.hidden=!c.showDeploy);
+    serviceList.querySelectorAll('.actions-cell').forEach(td=>td.hidden=!c.showActions);
+    serviceList.querySelectorAll('.inline-pill-btn').forEach(btn=>{
+      if(!c.canToggle){btn.setAttribute('aria-disabled','true');btn.tabIndex=-1;btn.title=c.fully?'Fully Managed mode':c.restricted?'Restricted mode':'Read Only role';}
+      else{btn.removeAttribute('aria-disabled');btn.removeAttribute('tabindex');btn.removeAttribute('title');}
+    });
+    serviceList.querySelectorAll('.icon-btn.edit').forEach(b=>{b.disabled=!c.canEdit;});
+    serviceList.querySelectorAll('.icon-btn.delete').forEach(b=>{b.disabled=!c.canDelete;});
+    syncMaster();updateSaveUI();
+  }
+  function syncMaster(){
+    if(!state.enabled){enableAll.checked=false;enableAll.indeterminate=false;enableAll.disabled=true;return;}
+    const c=caps();const total=state.services.length;const enabled=state.services.filter(s=>s.enabled).length;
+    enableAll.indeterminate=enabled>0 && enabled<total;
+    enableAll.checked=total>0 && enabled===total;
+    enableAll.disabled=!c.canToggle || total===0;
+  }
+  function markDirty(){state.dirty=true;dirtyInd.hidden=false;updateSaveUI();}
+  function updateSaveUI(){
+    const c=caps();
+    if(!state.enabled){actionsBar.style.display='none';return;}
+    actionsBar.style.display='flex';
+    if(!c.allowSave){
+      saveBtn.style.display='none';
+      saveReason.hidden=false;
+      saveReason.textContent=state.role==='Read Only'?'Save disabled (Read Only)':'Save disabled in this mode';
+    }else{
+      saveReason.hidden=true;
+      saveBtn.style.display='inline-flex';
+      saveBtn.disabled=!state.dirty;
+    }
+  }
+  function announce(msg,important=false){
+    (important?liveAssertive:livePolite).textContent='';
+    setTimeout(()=>{(important?liveAssertive:livePolite).textContent=msg;},30);
+  }
+  function flash(msg){
+    flashEl.textContent=msg;
+    flashEl.classList.add('visible');
+    announce(msg);
+    setTimeout(()=>flashEl.classList.remove('visible'),1700);
+  }
+  function openModal(svc){
+    const c=caps();
+    lastFocus=document.activeElement;
+    serviceIdInput.value=svc.id;
+    serviceDetails.value=`Name: ${svc.name}
+Description: ${svc.description}
+Last Updated: ${fmtFull(svc.lastUpdated)}`;
+    enabledToggle.checked=svc.enabled;
+    const ro=!c.canToggle;
+    enabledToggle.disabled=ro;
+    dialog.classList.toggle('readonly',ro);
+    modalSave.disabled=ro;
+    modal.setAttribute('aria-hidden','false');
+    document.body.classList.add('modal-open');
+    setTimeout(()=>dialog.focus(),40);
+  }
+  function closeModal(){
+    modal.setAttribute('aria-hidden','true');
+    document.body.classList.remove('modal-open');
+    if(lastFocus) lastFocus.focus();
+  }
+  function confirmAbandon(){return !state.dirty || confirm('Discard unsaved changes?');}
+  toggleBtn.addEventListener('click',()=>{
+    if(state.role==='Read Only')return;
+    if(state.enabled){
+      if(!confirmAbandon())return;
+      state.enabled=false;state.services=[];state.dirty=false;
+      toggleBtn.textContent='Enable Service Listing';
+      toggleBtn.setAttribute('aria-pressed','false');
+      tableWrapper.hidden=true;actionsBar.style.display='none';dirtyInd.hidden=true;
+      announce('Service listing disabled');
+    }else{
+      state.enabled=true;state.services=clone(state.mode);state.dirty=false;dirtyInd.hidden=true;
+      toggleBtn.textContent='Disable Service Listing';
+      toggleBtn.setAttribute('aria-pressed','true');
+      tableWrapper.hidden=false;
+      render();
+      announce('Service listing enabled');
+    }
+    updateSaveUI();
+  });
+  modeSelect.addEventListener('change',()=>{
+    const nm=modeSelect.value;
+    if(state.enabled && nm!==state.mode && !confirmAbandon()){modeSelect.value=state.mode;return;}
+    state.mode=nm;
+    updateBadges();
+    if(state.enabled){state.services=clone(state.mode);state.dirty=false;dirtyInd.hidden=true;render();}
+    updateSaveUI();
+  });
+  roleSelect.addEventListener('change',()=>{
+    state.role=roleSelect.value;
+    updateBadges();
+    toggleBtn.disabled=state.role==='Read Only';
+    if(state.enabled) applyCaps();
+    updateSaveUI();
+  });
+  enableAll.addEventListener('change',e=>{
+    const c=caps(); if(!c.canToggle){syncMaster();return;}
+    const target=e.target.checked;
+    const now=new Date().toISOString();
+    let changed=false;
+    state.services.forEach(s=>{if(s.enabled!==target){s.enabled=target;s.lastUpdated=now;changed=true;}});
+    if(changed){markDirty();render();announce('Bulk '+(target?'enabled':'disabled'));}
+    syncMaster();
+  });
+  serviceList.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-action]'); if(!btn||!state.enabled) return;
+    const id=+btn.dataset.id; const svc=state.services.find(s=>s.id===id); if(!svc) return;
+    const c=caps(); const act=btn.dataset.action;
+    if(act==='toggle'){
+      if(!c.canToggle)return;
+      svc.enabled=!svc.enabled; svc.lastUpdated=new Date().toISOString();
+      markDirty(); render(); announce(`${svc.name} ${svc.enabled?'enabled':'disabled'}`);
+    }else if(act==='edit'){
+      if(!c.canEdit)return; openModal(svc);
+    }else if(act==='delete'){
+      if(!c.canDelete)return;
+      if(confirm(`Delete service "${svc.name}"?`)){
+        state.services=state.services.filter(s=>s.id!==id);
+        markDirty(); render(); announce(`${svc.name} deleted`,true);
+      }
+    }
+  });
+  modalClose.addEventListener('click',closeModal);
+  modalCancel.addEventListener('click',closeModal);
+  document.addEventListener('click',e=>{if(e.target===modal) closeModal();});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape' && modal.getAttribute('aria-hidden')==='false'){closeModal();}
+    if((e.metaKey||e.ctrlKey)&&e.key==='s'){if(!saveBtn.disabled && saveBtn.offsetParent){e.preventDefault();saveBtn.click();}}
+  });
+  document.getElementById('service-form').addEventListener('submit',e=>{
+    e.preventDefault();
+    const id=+serviceIdInput.value;
+    const svc=state.services.find(s=>s.id===id);
+    if(svc){
+      const nv=enabledToggle.checked;
+      if(svc.enabled!==nv){
+        svc.enabled=nv;svc.lastUpdated=new Date().toISOString();
+        markDirty();render();announce(`${svc.name} set ${nv?'enabled':'disabled'}`);
+      }
+    }
+    closeModal();
+  });
+  saveBtn.addEventListener('click',e=>{
+    e.preventDefault(); if(saveBtn.disabled) return;
+    state.dirty=false; dirtyInd.hidden=true; updateSaveUI();
+    flash('Changes saved (demo)');
+  });
+  function trapFocus(e){
+    if(modal.getAttribute('aria-hidden')==='true')return;
+    if(e.key!=='Tab')return;
+    const f=[...modal.querySelectorAll('button,[href],input,textarea,select,[tabindex]:not([tabindex="-1"])')].filter(el=>!el.disabled && el.offsetParent!==null);
+    if(!f.length)return;
+    const first=f[0],last=f[f.length-1];
+    if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}
+  }
+  modal.addEventListener('keydown',trapFocus);
+  updateBadges();
+});
+
+/* Capability Matrix Logic */
+(function(){
+  const modeSel=document.getElementById('filter-mode');
+  const roleSel=document.getElementById('filter-role');
+  const table=document.getElementById('capability-table');
+  const rows=[...table.tBodies[0].rows];
+  const emptyMsg=document.getElementById('filter-empty');
+  const resetBtn=document.getElementById('reset-filters');
+  const colToggles=[...document.querySelectorAll('.toggle-cols input[type="checkbox"]')];
+
+  function applyFilters(){
+    const m=modeSel.value,r=roleSel.value;
+    let visible=0;
+    rows.forEach(tr=>{
+      const rowMode=tr.dataset.mode;
+      const rowRole=tr.dataset.role;
+      const match=(m==='all'||rowMode===m)&&(r==='all'||rowRole.startsWith(r));
+      tr.style.display=match?'':'none';
+      if(match) visible++;
+    });
+    adjustRowSpans();
+    emptyMsg.style.display=visible?'none':'block';
+    updateReset();
+  }
+  function adjustRowSpans(){
+    const modeCells=[...table.querySelectorAll('th.mode-col')];
+    modeCells.forEach(c=>{c.style.display='';c.removeAttribute('rowspan');});
+    const groups={};
+    rows.forEach(r=>{
+      if(r.style.display==='none')return;
+      const m=r.dataset.mode;
+      groups[m]=groups[m]||[];
+      groups[m].push(r);
+    });
+    Object.values(groups).forEach(gr=>{
+      const cells=gr.map(r=>r.querySelector('th.mode-col'));
+      const keeper=cells[0];
+      keeper.rowSpan=cells.length;
+      cells.slice(1).forEach(c=>{c.style.display='none';c.removeAttribute('rowspan');});
+    });
+  }
+  function toggleColumns(){
+    colToggles.forEach(cb=>{
+      const key=cb.dataset.col, show=cb.checked;
+      table.querySelectorAll('[data-col="'+key+'"]').forEach(el=>{
+        el.classList.toggle('hideable',!show);
+        el.setAttribute('data-hidden',show?'false':'true');
+      });
+    });
+    updateReset();
+  }
+  function updateReset(){
+    const any=modeSel.value!=='all'||roleSel.value!=='all'||colToggles.some(cb=>!cb.checked);
+    resetBtn.disabled=!any;
+  }
+  function resetAll(){
+    modeSel.value='all';roleSel.value='all';
+    colToggles.forEach(cb=>cb.checked=true);
+    toggleColumns();applyFilters();
+  }
+  modeSel.addEventListener('change',applyFilters);
+  roleSel.addEventListener('change',applyFilters);
+  colToggles.forEach(cb=>cb.addEventListener('change',toggleColumns));
+  resetBtn.addEventListener('click',e=>{e.preventDefault();resetAll();});
+  toggleColumns();applyFilters();
+})();
+</script>
+</body>
+</html>
