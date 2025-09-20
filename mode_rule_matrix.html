@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mode / Role UI Capability Matrix</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Matrix of Service Management UI behaviors by Mode and Role">
+<style>
+:root{
+  --bg:#f5f7f9;--panel:#fff;--border:#d8dee3;--border-soft:#eceff2;
+  --text:#1f2d3d;--muted:#5b6b7c;--accent:#297fce;
+  --green:#1f8d47;--amber:#d8a10d;--red:#d82f2f;--violet:#8e44ad;--blue:#2474c7;--gray:#95a2ae;
+  --focus:0 0 0 3px rgba(36,116,199,.35);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+  font-size:15px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);line-height:1.45;}
+h1{margin:0 0 .85rem;font-size:1.55rem;font-weight:600;letter-spacing:.5px;}
+p.lead{margin:.15rem 0 1rem;color:var(--muted);max-width:880px;font-size:.9rem;}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:1.4rem 1.6rem 1.9rem;max-width:1220px;margin:1.2rem auto;}
+.controls{display:flex;flex-wrap:wrap;gap:.75rem;margin:0 0 1rem;}
+.control{display:flex;flex-direction:column;gap:4px;font-size:.6rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.control select{padding:.45rem .55rem;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:.8rem;min-width:160px;}
+.control select:focus{outline:none;box-shadow:var(--focus);border-color:var(--blue);}
+.legend{display:flex;flex-wrap:wrap;gap:.9rem;list-style:none;padding:0;margin:.4rem 0 1rem;font-size:.62rem;color:var(--muted);}
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border-radius:10px;font-size:.55rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#fff;}
+.badge.Fully{background:var(--green);}
+.badge.Partially{background:var(--amber);color:#222;}
+.badge.Restricted{background:var(--red);}
+.badge.Unmanaged{background:var(--violet);}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:14px;background:#fff;}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:930px;font-size:.72rem;}
+thead th{position:sticky;top:0;background:#f1f4f6;border-bottom:1px solid var(--border);z-index:2;font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;font-weight:600;padding:7px 10px;text-align:center;}
+tbody td,tbody th{padding:7px 10px;border-bottom:1px solid var(--border-soft);text-align:center;vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#f8fafc;}
+th.mode-col{background:#f9fbfc;font-weight:600;text-align:left;width:180px;max-width:200px;position:sticky;left:0;z-index:1;}
+tbody tr:hover th.mode-col{background:#eef5fa;}
+td.role-col{font-weight:600;text-align:left;}
+.status-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font-size:.75rem;font-weight:700;line-height:1;}
+.avail{background:var(--green);color:#fff;}
+.cond{background:var(--blue);color:#fff;}
+.na{background:var(--gray);color:#fff;}
+.hideable[data-hidden="true"]{display:none;}
+.compact-note{margin:.9rem 0 0;font-size:.58rem;color:var(--muted);line-height:1.3;}
+.filter-empty{display:none;margin:.75rem 0 0;font-size:.7rem;font-weight:600;color:var(--red);}
+.sticky-shadow:after{content:"";position:absolute;top:0;right:-8px;width:8px;height:100%;background:linear-gradient(to right,rgba(0,0,0,.06),transparent);pointer-events:none;}
+.toggle-cols{display:flex;flex-wrap:wrap;gap:.9rem;margin-left:auto;}
+.toggle-cols label{display:flex;align-items:center;gap:.35rem;font-size:.58rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:var(--muted);}
+.toggle-cols input{transform:translateY(1px);}
+.btn-reset{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:.45rem .75rem;font-size:.65rem;font-weight:600;letter-spacing:.05em;cursor:pointer;}
+.btn-reset:disabled{opacity:.5;cursor:not-allowed;}
+.btn-reset:focus-visible{outline:none;box-shadow:var(--focus);}
+@media (max-width:940px){th.mode-col{min-width:160px;}}
+@media (max-width:720px){.toggle-cols{flex-direction:column;align-items:flex-start;}}
+</style>
+</head>
+<body>
+<div class="panel" role="region" aria-labelledby="matrix-heading">
+  <h1 id="matrix-heading">Mode / Role UI Capability Matrix</h1>
+  <p class="lead">Interactive reference for how UI elements are enabled, conditional, or unavailable across platform Mode and user Role.</p>
+
+  <div class="controls" role="group" aria-label="Filters">
+    <div class="control">
+      <label for="filter-mode">Mode</label>
+      <select id="filter-mode">
+        <option value="all">All Modes</option>
+        <option value="Fully">Fully Managed</option>
+        <option value="Partially">Partially Managed</option>
+        <option value="Restricted">Restricted</option>
+        <option value="Unmanaged">Unmanaged</option>
+      </select>
+    </div>
+    <div class="control">
+      <label for="filter-role">Role</label>
+      <select id="filter-role">
+        <option value="all">All Roles</option>
+        <option value="Admin">Admin</option>
+        <option value="Read">Read Only</option>
+      </select>
+    </div>
+    <div class="toggle-cols" aria-label="Toggle columns">
+      <label><input type="checkbox" data-col="bulk" checked> Bulk</label>
+      <label><input type="checkbox" data-col="edit" checked> Edit</label>
+      <label><input type="checkbox" data-col="delete" checked> Delete</label>
+      <label><input type="checkbox" data-col="save" checked> Save</label>
+      <label><input type="checkbox" data-col="modal" checked> Modal</label>
+      <label><input type="checkbox" data-col="deploy" checked> Deploy</label>
+      <label><input type="checkbox" data-col="actions" checked> Actions</label>
+      <label><input type="checkbox" data-col="enable" checked> Enable Btn</label>
+      <button id="reset-filters" class="btn-reset" disabled>Reset</button>
+    </div>
+  </div>
+
+  <ul class="legend" aria-label="Legend">
+    <li><span class="status-icon avail" aria-hidden="true">✓</span> Yes / Enabled</li>
+    <li><span class="status-icon cond" aria-hidden="true">●</span> Conditional</li>
+    <li><span class="status-icon na" aria-hidden="true">—</span> Hidden / Disabled</li>
+  </ul>
+
+  <div class="table-wrap">
+    <table id="capability-table">
+      <thead>
+        <tr>
+          <th class="mode-col sticky-shadow" scope="col">Mode</th>
+          <th scope="col">Role</th>
+          <th scope="col">Per‑Service Toggle</th>
+          <th scope="col" data-col="bulk">Bulk Toggle</th>
+          <th scope="col" data-col="edit">Edit Action</th>
+          <th scope="col" data-col="delete">Delete Action</th>
+          <th scope="col" data-col="save">Save Changes</th>
+          <th scope="col" data-col="modal">Modal Save</th>
+          <th scope="col" data-col="deploy">Deploy Column</th>
+          <th scope="col" data-col="actions">Actions Column</th>
+          <th scope="col" data-col="enable">Enable Listing Button</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Fully Managed -->
+        <tr data-mode="Fully" data-role="Admin">
+          <th scope="rowgroup" class="mode-col">
+            <span class="badge Fully">Fully</span> Fully Managed
+          </th>
+          <td class="role-col">Admin</td>
+          <td><span class="status-icon na" aria-label="Per-service toggle: Not available">—</span></td>
+          <td data-col="bulk"><span class="status-icon na" aria-label="Bulk toggle: Not available">—</span></td>
+          <td data-col="edit"><span class="status-icon na" aria-label="Edit action: Hidden">—</span></td>
+          <td data-col="delete"><span class="status-icon na" aria-label="Delete action: Hidden">—</span></td>
+          <td data-col="save"><span class="status-icon na" aria-label="Save button: Hidden">—</span></td>
+          <td data-col="modal"><span class="status-icon na" aria-label="Modal save: Disabled">—</span></td>
+          <td data-col="deploy"><span class="status-icon na" aria-label="Deploy column: Hidden">—</span></td>
+          <td data-col="actions"><span class="status-icon na" aria-label="Actions column: Hidden">—</span></td>
+          <td data-col="enable"><span class="status-icon avail" aria-label="Enable listing button: Enabled">✓</span></td>
+        </tr>
+        <tr data-mode="Fully" data-role="Read">
+          <!-- duplicate mode cell retained for dynamic regrouping; hidden via JS -->
+          <th scope="rowgroup" class="mode-col" aria-hidden="true" style="display:none;">
+            <span class="badge Fully">Fully</span> Fully Managed
+          </th>
+          <td class="role-col">Read Only</td>
+          <td><span class="status-icon na" aria-label="Per-service toggle: Not available">—</span></td>
+          <td data-col="bulk"><span class="status-icon na" aria-label="Bulk toggle: Not available">—</span></td>
+          <td data-col="edit"><span class="status-icon na" aria-label="Edit action: Hidden">—</span></td>
+          <td data-col="delete"><span class="status-icon na" aria-label="Delete action: Hidden">—</span></td>
+          <td data-col="save"><span class="status-icon na" aria-label="Save button: Hidden">—</span></td>
+          <td data-col="modal"><span class="status-icon na" aria-label="Modal save: Disabled">—</span></td>
+          <td data-col="deploy"><span class="status-icon na" aria-label="Deploy column: Hidden">—</span></td>
+          <td data-col="actions"><span class="status-icon na" aria-label="Actions column: Hidden">—</span></td>
+          <td data-col="enable"><span class="status-icon na" aria-label="Enable listing button: Disabled">—</span></td>
+        </tr>
+        <!-- Partially Managed -->
+        <tr data-mode="Partially" data-role="Admin">
+          <th scope="rowgroup" class="mode-col">
+            <span class="badge Partially">Partial</span> Partially Managed
+          </th>
+          <td class="role-col">Admin</td>
+          <td><span class="status-icon avail" aria-label="Per-service toggle: Enabled">✓</span></td>
+          <td data-col="bulk"><span class="status-icon avail" aria-label="Bulk toggle: Enabled">✓</span></td>
+          <td data-col="edit"><span class="status-icon avail" aria-label="Edit action: Shown">✓</span></td>
+          <td data-col="delete"><span class="status-icon na" aria-label="Delete action: Not available">—</span></td>
+          <td data-col="save"><span class="status-icon cond" aria-label="Save button: Conditional (dirty state)">●</span></td>
+          <td data-col="modal"><span class="status-icon avail" aria-label="Modal save: Enabled">✓</span></td>
+          <td data-col="deploy"><span class="status-icon avail" aria-label="Deploy column: Shown">✓</span></td>
+          <td data-col="actions"><span class="status-icon avail" aria-label="Actions column: Shown">✓</span></td>
+          <td data-col="enable"><span class="status-icon avail" aria-label="Enable listing button: Enabled">✓</span></td>
+        </tr>
+        <tr data-mode="Partially" data-role="Read">
+          <th scope="rowgroup" class="mode-col" aria-hidden="true" style="display:none;">
+            <span class="badge Partially">Partial</span> Partially Managed
+          </th>
+          <td class="role-col">Read Only</td>
+          <td><span class="status-icon na" aria-label="Per-service toggle: Not available">—</span></td>
+          <td data-col="bulk"><span class="status-icon na" aria-label="Bulk toggle: Not available">—</span></td>
+          <td data-col="edit"><span class="status-icon na" aria-label="Edit action: Hidden">—</span></td>
+          <td data-col="delete"><span class="status-icon na" aria-label="Delete action: Hidden">—</span></td>
+          <td data-col="save"><span class="status-icon na" aria-label="Save button: Hidden">—</span></td>
+          <td data-col="modal"><span class="status-icon na" aria-label="Modal save: Disabled">—</span></td>
+          <td data-col="deploy"><span class="status-icon avail" aria-label="Deploy column: Shown">✓</span></td>
+          <td data-col="actions"><span class="status-icon na" aria-label="Actions column: Hidden">—</span></td>
+          <td data-col="enable"><span class="status-icon na" aria-label="Enable listing button: Disabled">—</span></td>
+        </tr>
+        <!-- Restricted -->
+        <tr data-mode="Restricted" data-role="Admin">
+          <th scope="rowgroup" class="mode-col">
+            <span class="badge Restricted">Restrict</span> Restricted
+          </th>
+            <td class="role-col">Admin</td>
+            <td><span class="status-icon na" aria-label="Per-service toggle: Not available">—</span></td>
+            <td data-col="bulk"><span class="status-icon na" aria-label="Bulk toggle: Not available">—</span></td>
+            <td data-col="edit"><span class="status-icon na" aria-label="Edit action: Hidden">—</span></td>
+            <td data-col="delete"><span class="status-icon na" aria-label="Delete action: Hidden">—</span></td>
+            <td data-col="save"><span class="status-icon na" aria-label="Save button: Hidden">—</span></td>
+            <td data-col="modal"><span class="status-icon na" aria-label="Modal save: Disabled">—</span></td>
+            <td data-col="deploy"><span class="status-icon na" aria-label="Deploy column: Hidden">—</span></td>
+            <td data-col="actions"><span class="status-icon na" aria-label="Actions column: Hidden">—</span></td>
+            <td data-col="enable"><span class="status-icon avail" aria-label="Enable listing button: Enabled">✓</span></td>
+        </tr>
+        <tr data-mode="Restricted" data-role="Read">
+          <th scope="rowgroup" class="mode-col" aria-hidden="true" style="display:none;">
+            <span class="badge Restricted">Restrict</span> Restricted
+          </th>
+          <td class="role-col">Read Only</td>
+          <td><span class="status-icon na" aria-label="Per-service toggle: Not available">—</span></td>
+          <td data-col="bulk"><span class="status-icon na" aria-label="Bulk toggle: Not available">—</span></td>
+          <td data-col="edit"><span class="status-icon na" aria-label="Edit action: Hidden">—</span></td>
+          <td data-col="delete"><span class="status-icon na" aria-label="Delete action: Hidden">—</span></td>
+          <td data-col="save"><span class="status-icon na" aria-label="Save button: Hidden">—</span></td>
+          <td data-col="modal"><span class="status-icon na" aria-label="Modal save: Disabled">—</span></td>
+          <td data-col="deploy"><span class="status-icon na" aria-label="Deploy column: Hidden">—</span></td>
+          <td data-col="actions"><span class="status-icon na" aria-label="Actions column: Hidden">—</span></td>
+          <td data-col="enable"><span class="status-icon na" aria-label="Enable listing button: Disabled">—</span></td>
+        </tr>
+        <!-- Unmanaged -->
+        <tr data-mode="Unmanaged" data-role="Admin">
+          <th scope="rowgroup" class="mode-col">
+            <span class="badge Unmanaged">Unmanaged</span> Unmanaged
+          </th>
+          <td class="role-col">Admin</td>
+          <td><span class="status-icon avail" aria-label="Per-service toggle: Enabled">✓</span></td>
+          <td data-col="bulk"><span class="status-icon avail" aria-label="Bulk toggle: Enabled">✓</span></td>
+          <td data-col="edit"><span class="status-icon avail" aria-label="Edit action: Shown">✓</span></td>
+          <td data-col="delete"><span class="status-icon avail" aria-label="Delete action: Shown">✓</span></td>
+          <td data-col="save"><span class="status-icon cond" aria-label="Save button: Conditional (dirty state)">●</span></td>
+          <td data-col="modal"><span class="status-icon avail" aria-label="Modal save: Enabled">✓</span></td>
+          <td data-col="deploy"><span class="status-icon avail" aria-label="Deploy column: Shown">✓</span></td>
+          <td data-col="actions"><span class="status-icon avail" aria-label="Actions column: Shown">✓</span></td>
+          <td data-col="enable"><span class="status-icon avail" aria-label="Enable listing button: Enabled">✓</span></td>
+        </tr>
+        <tr data-mode="Unmanaged" data-role="Read">
+          <th scope="rowgroup" class="mode-col" aria-hidden="true" style="display:none;">
+            <span class="badge Unmanaged">Unmanaged</span> Unmanaged
+          </th>
+          <td class="role-col">Read Only</td>
+          <td><span class="status-icon na" aria-label="Per-service toggle: Not available">—</span></td>
+          <td data-col="bulk"><span class="status-icon na" aria-label="Bulk toggle: Not available">—</span></td>
+          <td data-col="edit"><span class="status-icon na" aria-label="Edit action: Hidden">—</span></td>
+          <td data-col="delete"><span class="status-icon na" aria-label="Delete action: Hidden">—</span></td>
+          <td data-col="save"><span class="status-icon na" aria-label="Save button: Hidden">—</span></td>
+          <td data-col="modal"><span class="status-icon na" aria-label="Modal save: Disabled">—</span></td>
+          <td data-col="deploy"><span class="status-icon avail" aria-label="Deploy column: Shown">✓</span></td>
+          <td data-col="actions"><span class="status-icon na" aria-label="Actions column: Hidden">—</span></td>
+          <td data-col="enable"><span class="status-icon na" aria-label="Enable listing button: Disabled">—</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="compact-note">
+    Conditional (●) Save: visible only for Admin in Partially Managed / Unmanaged and enabled when dirty. Deploy column only in Partially Managed & Unmanaged. Actions column hidden in Fully Managed, Restricted, or any Read Only context. Modal Save requires same capability as per‑service toggle.
+  </p>
+  <div id="filter-empty" class="filter-empty" role="status" aria-live="polite">No rows match filters.</div>
+</div>
+
+<script>
+(function(){
+  const modeSel=document.getElementById('filter-mode');
+  const roleSel=document.getElementById('filter-role');
+  const table=document.getElementById('capability-table');
+  const rows=[...table.tBodies[0].rows];
+  const emptyMsg=document.getElementById('filter-empty');
+  const resetBtn=document.getElementById('reset-filters');
+  const colToggles=[...document.querySelectorAll('.toggle-cols input[type="checkbox"]')];
+
+  function applyFilters(){
+    const m=modeSel.value;
+    const r=roleSel.value;
+    let visible=0;
+    rows.forEach(tr=>{
+      const rowMode=tr.dataset.mode;
+      const rowRole=tr.dataset.role;
+      const match=(m==='all'||rowMode===m)&&(r==='all'||rowRole.startsWith(r));
+      tr.style.display=match?'':'none';
+      if(match) visible++;
+    });
+    adjustRowSpans();
+    emptyMsg.style.display=visible?'none':'block';
+    updateResetState();
+  }
+
+  function adjustRowSpans(){
+    // Reset all mode cells
+    const modeCells=[...table.querySelectorAll('th.mode-col')];
+    modeCells.forEach(c=>{
+      c.style.display='';
+      c.removeAttribute('rowspan');
+    });
+    // Group rows by mode
+    const groups={};
+    rows.forEach(r=>{
+      if(r.style.display==='none') return;
+      const mode=r.dataset.mode;
+      groups[mode]=groups[mode]||[];
+      groups[mode].push(r);
+    });
+    // For each group choose first visible row to hold the spanning cell
+    Object.values(groups).forEach(groupRows=>{
+      // collect mode cells in these rows
+      const cells=groupRows.map(r=>r.querySelector('th.mode-col'));
+      // first non-hidden cell will remain; hide others
+      const keeper=cells[0];
+      const spanCount=groupRows.length;
+      keeper.rowSpan=spanCount;
+      // Hide subsequent duplicates
+      cells.slice(1).forEach(c=>{
+        c.style.display='none';
+        c.removeAttribute('rowspan');
+      });
+    });
+  }
+
+  function toggleColumns(){
+    colToggles.forEach(cb=>{
+      const colKey=cb.dataset.col;
+      const show=cb.checked;
+      table.querySelectorAll('[data-col="'+colKey+'"]').forEach(el=>{
+        el.classList.toggle('hideable',!show);
+        el.setAttribute('data-hidden',show?'false':'true');
+      });
+    });
+    updateResetState();
+  }
+
+  function updateResetState(){
+    const anyFiltered=modeSel.value!=='all'||roleSel.value!=='all'||colToggles.some(cb=>!cb.checked);
+    resetBtn.disabled=!anyFiltered;
+  }
+
+  function resetAll(){
+    modeSel.value='all';
+    roleSel.value='all';
+    colToggles.forEach(cb=>cb.checked=true);
+    toggleColumns();
+    applyFilters();
+  }
+
+  modeSel.addEventListener('change',applyFilters);
+  roleSel.addEventListener('change',applyFilters);
+  colToggles.forEach(cb=>cb.addEventListener('change',toggleColumns));
+  resetBtn.addEventListener('click',e=>{e.preventDefault();resetAll();});
+
+  toggleColumns();
+  applyFilters();
+})();
+</script>
+</body>
+</html>
