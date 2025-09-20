@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Service Management UI - Usage Guide</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;margin:0;background:#f5f7fa;color:#2c3e50;line-height:1.5;}
+main{max-width:920px;margin:0 auto;padding:2.25rem 1.5rem 3.5rem;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.05);}
+h1{margin-top:0;font-size:1.9rem;}
+h2{margin-top:2.2rem;font-size:1.2rem;text-transform:uppercase;letter-spacing:.06em;color:#34495e;}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85rem;background:#eef2f5;padding:2px 6px;border-radius:4px;}
+.badge{display:inline-block;padding:2px 8px;font-size:.65rem;font-weight:600;border-radius:12px;text-transform:uppercase;letter-spacing:.05em;margin:0 6px 0 0;}
+.mode-Fully{background:#2ecc71;color:#fff;}
+.mode-Partially{background:#f1c40f;color:#2c3e50;}
+.mode-Restricted{background:#e74c3c;color:#fff;}
+.mode-Unmanaged{background:#8e44ad;color:#fff;}
+.role-Admin{background:#34495e;color:#fff;}
+.role-Read{background:#7f8c8d;color:#fff;}
+table{width:100%;border-collapse:collapse;margin:1rem 0 1.5rem;}
+th,td{padding:.6rem .75rem;border:1px solid #e1e5e9;font-size:.85rem;vertical-align:top;}
+th{background:#f0f3f6;text-transform:uppercase;font-weight:600;letter-spacing:.05em;font-size:.7rem;}
+.note{background:#f9f3d7;padding:.9rem 1rem;border-left:4px solid #c29d0b;border-radius:4px;margin:1.25rem 0;font-size:.85rem;}
+.tip{background:#e8f7ee;padding:.85rem 1rem;border-left:4px solid #1e8f52;border-radius:4px;margin:1.25rem 0;font-size:.85rem;}
+kbd{display:inline-block;padding:2px 5px;font-size:.7rem;line-height:1;border:1px solid #ccc;border-radius:3px;background:#fafafa;box-shadow:inset 0 -1px 0 #ddd;}
+ul{margin:0 0 1.2rem 1.2rem;padding:0;}
+a.button-link{display:inline-block;margin-top:1rem;background:#3498db;color:#fff;text-decoration:none;font-size:.8rem;padding:.6rem 1rem;border-radius:6px;}
+a.button-link:hover{background:#2980b9;}
+hr{border:none;border-top:1px solid #eceff2;margin:2rem 0;}
+.small{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#60707c;margin-top:3rem;text-align:center;}
+</style>
+</head>
+<body>
+<main>
+  <h1>Service Management UI Guide</h1>
+  <p>This document explains how to use the Service Management UI to view, enable, edit, and manage SBL (Service Baseline Layer) services across operational modes and roles.</p>
+
+  <h2>1. Core Concepts</h2>
+  <ul>
+    <li><strong>Mode</strong>: Governs which services are loaded and what actions are allowed.</li>
+    <li><strong>Role</strong>: Admin or Read Only; determines write capabilities.</li>
+    <li><strong>SBL Enable Toggle</strong>: The button labeled <em>Enable SBL Service</em> loads the catalog for the current mode; disabling unloads it.</li>
+    <li><strong>Dirty State</strong>: Tracks unsaved modifications (enables Save Changes button where applicable).</li>
+  </ul>
+
+  <h2>2. Modes & Behavior</h2>
+  <p>Each mode has predefined service entries. Permissions vary:</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Mode</th>
+        <th>Toggle Enabled?</th>
+        <th>Delete?</th>
+        <th>Deploy Column Visible?</th>
+        <th>Actions Column Visible?</th>
+        <th>Save Button Shown?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge mode-Fully">Fully Managed</span></td>
+        <td>No</td><td>No</td><td>Hidden</td><td>Hidden</td><td>No</td>
+      </tr>
+      <tr>
+        <td><span class="badge mode-Partially">Partially Managed</span></td>
+        <td>Yes</td><td>No (disabled)</td><td>Visible</td><td>Visible</td><td>Yes (Admin)</td>
+      </tr>
+      <tr>
+        <td><span class="badge mode-Restricted">Restricted</span></td>
+        <td>No</td><td>No</td><td>Hidden</td><td>Hidden</td><td>No</td>
+      </tr>
+      <tr>
+        <td><span class="badge mode-Unmanaged">Unmanaged</span></td>
+        <td>Yes</td><td>Yes</td><td>Visible</td><td>Visible</td><td>Yes (Admin)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Roles</h2>
+  <ul>
+    <li><span class="badge role-Admin">Admin</span> Full interaction within mode constraints.</li>
+    <li><span class="badge role-Read">Read Only</span> Cannot enable SBL, toggle services, delete, or save.</li>
+  </ul>
+
+  <h2>4. Enabling the SBL Catalog</h2>
+  <ol>
+    <li>Select desired Mode and Role first.</li>
+    <li>Click <strong>Enable SBL Service</strong>.</li>
+    <li>The table appears populated with the mode’s catalog.</li>
+    <li>Button label toggles to <em>Disable SBL Service</em>. Click again to unload.</li>
+  </ol>
+
+  <h2>5. Table Columns</h2>
+  <ul>
+    <li><strong>Service</strong>: Name, description, last updated timestamp.</li>
+    <li><strong>Enabled</strong>: Pill-style button reflecting current state (interactive where allowed).</li>
+    <li><strong>Deployed</strong>: Read-only checkbox plus last run timestamp (hidden in Fully Managed / Restricted).</li>
+    <li><strong>Actions</strong>: Edit / Delete icons (hidden if not allowed).</li>
+  </ul>
+
+  <h2>6. Bulk Enable / Disable</h2>
+  <p>The master checkbox in the Enabled header applies a uniform state across all listed services. It supports an indeterminate state when mixed. Disabled where mode/role disallows toggling.</p>
+
+  <h2>7. Editing a Service</h2>
+  <ol>
+    <li>Click the edit icon (📝) where permitted.</li>
+    <li>A modal shows static details and an enabled toggle (if interactive).</li>
+    <li>Unavailable states display a read-only overlay; Save button hidden.</li>
+    <li>Submit changes to update the row and mark state dirty.</li>
+  </ol>
+
+  <h2>8. Deleting a Service (Unmanaged Mode Only)</h2>
+  <ol>
+    <li>Click delete icon (🗑️).</li>
+    <li>Confirm prompt removes the service.</li>
+    <li>Dirty flag set; Save button enabled (Admin only).</li>
+  </ol>
+
+  <h2>9. Saving Changes</h2>
+  <ul>
+    <li>Appears only when: SBL enabled, Role = Admin, Mode = Partially Managed or Unmanaged.</li>
+    <li>Enabled once at least one change (toggle/edit/delete) occurs.</li>
+    <li>On save: dirty state resets and a transient confirmation message displays.</li>
+  </ul>
+
+  <h2>10. Dirty State Triggers</h2>
+  <ul>
+    <li>Toggling a single service.</li>
+    <li>Bulk toggle via header checkbox.</li>
+    <li>Changing state within modal and saving.</li>
+    <li>Deleting a service (Unmanaged).</li>
+  </ul>
+
+  <h2>11. Timestamps</h2>
+  <p>Last Updated updates on each enabled state change (single or bulk). Modal reflects the stored timestamp when opened.</p>
+
+  <h2>12. Read Only Behavior</h2>
+  <ul>
+    <li>Enable SBL button disabled.</li>
+    <li>No editing, toggling, deletion, or saving.</li>
+    <li>Actions column hidden; tooltips clarify disabled interactions where shown.</li>
+  </ul>
+
+  <h2>13. Visual Indicators</h2>
+  <ul>
+    <li>Badges reflect current mode and role dynamically.</li>
+    <li>Disabled buttons have reduced opacity and tooltips.</li>
+    <li>Confirmation message briefly appears after save.</li>
+  </ul>
+
+  <h2>14. Quick Reference</h2>
+  <table>
+    <thead>
+      <tr><th>Action</th><th>Where Allowed</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Toggle Single Service</td><td>Partially Managed, Unmanaged (Admin)</td><td>Updates timestamp</td></tr>
+      <tr><td>Bulk Toggle</td><td>Partially Managed, Unmanaged (Admin)</td><td>All services unified</td></tr>
+      <tr><td>Edit Modal</td><td>Partially Managed, Unmanaged (Admin)</td><td>Read-only overlay otherwise</td></tr>
+      <tr><td>Delete Service</td><td>Unmanaged (Admin)</td><td>Irreversible in current session</td></tr>
+      <tr><td>Save Changes</td><td>Partially Managed, Unmanaged (Admin)</td><td>Clears dirty flag</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tip">
+    Tip: Switching modes while SBL is enabled reloads a fresh catalog and clears unsaved changes.
+  </div>
+
+  <div class="note">
+    Note: This UI demo does not persist data; all operations are in-memory.
+  </div>
+
+  <h2>15. Common Troubleshooting</h2>
+  <ul>
+    <li><strong>Save button missing</strong>: Ensure mode is Partially Managed or Unmanaged and role is Admin with SBL enabled.</li>
+    <li><strong>Cannot toggle Enabled</strong>: You may be in Fully Managed, Restricted, or Read Only role.</li>
+    <li><strong>No actions column</strong>: Hidden by design in restricted contexts.</li>
+  </ul>
+
+  <p><a class="button-link" href="test.html">Back to Interactive UI</a></p>
+
+  <hr>
+  <p class="small">Service Management UI Guide - Static Documentation Page</p>
+</main>
+</body>
+</html>
