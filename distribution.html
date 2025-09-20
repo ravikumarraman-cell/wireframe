@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cloud Management Sunburst</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg:#f4f6f9;--panel:#fff;--border:#d9e1e6;--text:#23313f;--muted:#647587;
+  --focus-ring:0 0 0 3px rgba(36,116,199,.35);
+}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
+h2,h3{margin:.15rem 0 1rem;font-weight:600;letter-spacing:.5px;text-align:center;}
+.sunburst-container{max-width:960px;margin:1.8rem auto .9rem;padding:1.9rem 2.1rem 2.4rem;background:var(--panel);border:1px solid var(--border);border-radius:22px;box-shadow:0 6px 20px -6px rgba(0,0,0,.09);position:relative;}
+.chart-wrap{position:relative;}
+svg{max-width:100%;height:auto;display:block;margin:0 auto;}
+.path-segment{cursor:pointer;stroke:#fff;stroke-width:1.5px;stroke-linejoin:round;stroke-linecap:round;shape-rendering:geometricPrecision;transition:opacity .18s,stroke-width .18s;}
+.path-segment:focus-visible{outline:none;stroke:#000;stroke-width:2.5px;}
+.path-segment.dim{opacity:.16;}
+.path-segment.hover{stroke:#111;stroke-width:2.15px;}
+.seg-label{font-weight:500;fill:#16232e;pointer-events:none;user-select:none;dominant-baseline:middle;text-anchor:middle;font-size:11px;}
+.seg-label.dim{opacity:.45;}
+.seg-label.condensed{letter-spacing:.25px;}
+.center-group text{text-anchor:middle;pointer-events:none;user-select:none;}
+.center-title{font-size:18px;font-weight:600;fill:#16232e;}
+.center-value{font-size:12px;fill:var(--muted);}
+.center-hint{font-size:10px;fill:var(--muted);}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;margin:0 0 1rem;font-size:.68rem;justify-content:center;}
+.btn{border:1px solid var(--border);background:#f0f4f7;font-size:.6rem;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding:.45rem .8rem;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;}
+.btn:not(:disabled):hover{background:#e5edf2;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+.badge{display:inline-flex;align-items:center;justify-content:center;font-size:.55rem;font-weight:600;padding:2px 7px;border-radius:999px;letter-spacing:.05em;text-transform:uppercase;color:#fff;}
+.badge.Managed{background:#2ecc71;}
+.badge.Partially{background:#f1c40f;color:#222;}
+.badge.Restricted{background:#e74c3c;}
+.badge.Unmanaged{background:#8e44ad;}
+.legend{margin:1.05rem 0 0;display:flex;flex-wrap:wrap;gap:.55rem;font-size:.62rem;line-height:1.15;justify-content:center;}
+.legend-item{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .55rem;background:#f2f6f9;border:1px solid var(--border);border-radius:8px;}
+.swatch{width:13px;height:13px;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.15);}
+.tooltip{position:absolute;pointer-events:none;background:#1d2730;color:#fff;font-size:11px;padding:.5rem .6rem;border-radius:8px;line-height:1.28;box-shadow:0 4px 16px -4px rgba(0,0,0,.45);opacity:0;transform:translate(-50%,-8px);transition:.15s;}
+.tooltip.visible{opacity:1;}
+.meta{margin:.7rem 0 0;font-size:.65rem;color:var(--muted);text-align:center;min-height:1.2rem;}
+.breadcrumbs{display:flex;flex-wrap:wrap;gap:.35rem;justify-content:center;margin:.65rem 0 0;font-size:.58rem;letter-spacing:.05em;text-transform:uppercase;}
+.breadcrumbs button{background:#eef2f5;border:1px solid var(--border);padding:.28rem .6rem;border-radius:6px;cursor:pointer;font-weight:600;font-size:.55rem;letter-spacing:.05em;}
+.breadcrumbs button.active{background:#2474c7;color:#fff;border-color:#2474c7;}
+.breadcrumbs button:hover:not(.active){background:#dde6ec;}
+.breadcrumbs button:focus-visible{outline:none;box-shadow:var(--focus-ring);}
+.info-tile{max-width:960px;margin:0 auto 2rem;padding:1.25rem 1.55rem 1.55rem;background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:0 4px 16px -6px rgba(0,0,0,.08);font-size:.7rem;line-height:1.38;color:#314250;}
+.info-tile h3{margin:0 0 .75rem;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:#1d2c38;}
+.info-tile ul{margin:.1rem 0 .2rem;padding-left:1.05rem;}
+.info-tile li{margin:.3rem 0;}
+kbd{display:inline-block;padding:2px 5px;border:1px solid var(--border);border-radius:5px;background:#f2f5f7;font-size:.58rem;font-weight:600;letter-spacing:.03em;}
+.inline-note{display:inline-block;margin-left:.3rem;color:var(--muted);}
+.visually-hidden{position:absolute!important;width:1px;height:1px;clip:rect(1px,1px,1px,1px);clip-path:inset(50%);overflow:hidden;white-space:nowrap;padding:0;margin:0;border:0;}
+@media (max-width:880px){
+  .sunburst-container{margin:1.2rem .9rem .8rem;padding:1.3rem 1rem 1.85rem;border-radius:18px;}
+  svg{max-width:560px;}
+  .center-title{font-size:16px;}
+  .info-tile{margin:0 .9rem 1.5rem;}
+}
+@media (max-width:640px){
+  svg{max-width:460px;}
+  .seg-label{font-size:10px;}
+  .breadcrumbs{display:none;}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important;}
+}
+</style>
+</head>
+<body>
+<div class="sunburst-container" role="region" aria-labelledby="chart-heading">
+  <h2 id="chart-heading">Cloud Management Distribution</h2>
+  <div class="toolbar" aria-label="Chart controls">
+    <button id="btn-reset" class="btn" disabled>Reset Focus</button>
+    <button id="btn-download" class="btn">Download PNG</button>
+    <span style="font-size:.63rem;color:var(--muted);max-width:360px;text-align:center;">Enter / click to drill. Center or Reset to go up. Arrow keys move. Esc clears hover / returns root.</span>
+  </div>
+  <div class="chart-wrap">
+    <svg id="sunburst" width="720" height="720" role="tree" aria-labelledby="chart-heading chart-desc"></svg>
+    <p id="chart-desc" class="visually-hidden">Interactive hierarchical sunburst. Use Enter or Space to drill into a slice; Up Arrow, center circle, or Reset returns upward. Left / Right move between siblings; Down enters first child.</p>
+    <div id="tooltip" class="tooltip" role="status" aria-hidden="true"></div>
+  </div>
+  <div id="legend" class="legend" aria-label="Legend"></div>
+  <div id="breadcrumbs" class="breadcrumbs" aria-label="Breadcrumb navigation"></div>
+  <p class="meta" id="focus-path" aria-live="polite"></p>
+  <div id="live" class="visually-hidden" aria-live="polite"></div>
+  <div id="live-assertive" class="visually-hidden" aria-live="assertive"></div>
+</div>
+
+<div class="info-tile" role="region" aria-labelledby="usage-heading">
+  <h3 id="usage-heading">Using the Chart</h3>
+  <ul>
+    <li><strong>Drill Down:</strong> Click or press <kbd>Enter</kbd>/<kbd>Space</kbd> on a slice.</li>
+    <li><strong>Go Up:</strong> Click center ring, press <kbd>Up</kbd>, <kbd>Esc</kbd>, or use Reset.</li>
+    <li><strong>Navigate:</strong> <kbd>Left</kbd>/<kbd>Right</kbd> = sibling slices; <kbd>Down</kbd> = first child.</li>
+    <li><strong>Focus Path:</strong> Breadcrumb buttons jump directly to ancestors (desktop).</li>
+    <li><strong>Tooltip:</strong> Hover or keyboard focus shows value + percent of total.</li>
+    <li><strong>Labels:</strong> Auto shrink / truncate; full text exposed to assistive tech.</li>
+    <li><strong>Export:</strong> Download PNG preserves current drill level.</li>
+  </ul>
+  <span class="inline-note">Percent values stay relative to root for stable comparison.</span>
+</div>
+
+<script>
+/* Data */
+const data = {
+  name: "All Categories",
+  children: [
+    { name: "Managed", children: [
+      { name: "AWS", size: 45 }, { name: "GCP", size: 30 },
+      { name: "AZU", size: 55 }, { name: "OCI", size: 25 }
+    ]},
+    { name: "Partially Managed", children: [
+      { name: "AWS", size: 60 }, { name: "GCP", size: 75 },
+      { name: "AZU", size: 120 }, { name: "OCI", size: 25 }
+    ]},
+    { name: "Restricted", children: [
+      { name: "AWS", size: 30 }, { name: "GCP", size: 40 },
+      { name: "AZU", size: 50 }, { name: "OCI", size: 20 }
+    ]},
+    { name: "Unmanaged", children: [
+      { name: "AWS", size: 90 }, { name: "GCP", size: 50 },
+      { name: "AZU", size: 90 }, { name: "OCI", size: 50 }
+    ]}
+  ]
+};
+
+/* Setup */
+const svg = d3.select('#sunburst');
+const w = +svg.attr('width');
+const h = +svg.attr('height');
+const radius = Math.min(w,h)/2;
+const g = svg.append('g').attr('transform',`translate(${w/2},${h/2})`);
+const tooltip = d3.select('#tooltip');
+const resetBtn = document.getElementById('btn-reset');
+const dlBtn = document.getElementById('btn-download');
+const focusPathEl = document.getElementById('focus-path');
+const breadcrumbsEl = document.getElementById('breadcrumbs');
+const liveEl = document.getElementById('live');
+const liveAssertive = document.getElementById('live-assertive');
+
+const palette = d3.scaleOrdinal()
+  .domain(data.children.map(d=>d.name))
+  .range(d3.schemeSet2);
+
+const root = d3.hierarchy(data).sum(d=>d.size||0).sort((a,b)=>b.value - a.value);
+d3.partition().size([2 * Math.PI, root.height + 1])(root);
+root.each(d => d.current = {x0:d.x0,x1:d.x1,y0:d.y0,y1:d.y1});
+
+const ringScale = radius / (root.height + 1);
+
+const arc = d3.arc()
+  .startAngle(d=>d.x0)
+  .endAngle(d=>d.x1)
+  .innerRadius(d=>d.y0 * ringScale)
+  .outerRadius(d=>d.y1 * ringScale - 1);
+
+const total = root.value;
+function pct(v){return (v/total*100).toFixed(1)+'%';}
+
+/* Label fitting constants */
+const MIN_THICKNESS = 13;
+const MIN_ANGLE = 0.010;
+const MIN_FONT = 8;
+const BASE_FONT = 11;
+const ELLIPSIS = '…';
+const PADDING_ARC = 6;
+const measureCtx = document.createElement('canvas').getContext('2d');
+measureCtx.font = `500 ${BASE_FONT}px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif`;
+
+function midRadius(d){return (d.current.y0 + d.current.y1)/2 * ringScale;}
+function thickness(d){return (d.current.y1 - d.current.y0) * ringScale;}
+function arcAngle(d){return d.current.x1 - d.current.x0;}
+function arcLength(d){return arcAngle(d) * midRadius(d);}
+function baseLabel(d){
+  if(!d.depth) return '';
+  return !d.children ? `${d.data.name} (${pct(d.value)})` : d.data.name;
+}
+
+function computeLabel(d){
+  const ang = arcAngle(d);
+  const thick = thickness(d);
+  if(ang < MIN_ANGLE || thick < MIN_THICKNESS) return {text:'',font:0,textLength:null,condensed:false,full:baseLabel(d)};
+  const avail = arcLength(d) - PADDING_ARC;
+  if(avail <= 12) return {text:'',font:0,textLength:null,condensed:false,full:baseLabel(d)};
+  let label = baseLabel(d);
+  let fontSize = BASE_FONT;
+  let width = measure(label,fontSize);
+  while(width > avail && fontSize > MIN_FONT){
+    fontSize -= 1;
+    width = measure(label,fontSize);
+  }
+  if(width > avail){
+    const raw = label;
+    let keep = raw.length;
+    while(keep > 2 && width > avail){
+      keep--;
+      label = raw.slice(0,keep) + ELLIPSIS;
+      width = measure(label,fontSize);
+    }
+    if(keep <= 2) return {text:'',font:0,textLength:null,condensed:false,full:baseLabel(d)};
+  }
+  let useTextLength = null;
+  let condensed = false;
+  if(width > avail && width <= avail*1.12){
+    useTextLength = Math.max(avail, 8);
+    condensed = true;
+  } else if(width > avail){
+    return {text:'',font:0,textLength:null,condensed:false,full:baseLabel(d)};
+  }
+  return {text:label,font:fontSize,textLength:useTextLength,condensed,full:baseLabel(d)};
+}
+
+function measure(text,fontSize){
+  measureCtx.font = `500 ${fontSize}px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif`;
+  return measureCtx.measureText(text).width;
+}
+
+function labelTransform(d){
+  const pos = {x0:d.current.x0,x1:d.current.x1,y0:d.current.y0,y1:d.current.y1};
+  const centroid = arc.centroid(pos);
+  const angleDeg = (d.current.x0 + d.current.x1)/2 * 180/Math.PI - 90;
+  return `translate(${centroid[0]},${centroid[1]}) rotate(${angleDeg})`;
+}
+
+/* Paths */
+const paths = g.append('g')
+  .selectAll('path')
+  .data(root.descendants().filter(d=>d.depth))
+  .enter()
+  .append('path')
+  .attr('class','path-segment')
+  .attr('fill', d=>{
+    let a=d;
+    while(a.depth>1) a=a.parent;
+    return palette(a.data.name);
+  })
+  .attr('d', d=>arc(d.current))
+  .attr('tabindex',0)
+  .attr('role','treeitem')
+  .attr('aria-level', d=>d.depth)
+  .attr('aria-setsize', d=>d.parent? d.parent.children.length : root.children.length)
+  .attr('aria-posinset', d=>d.parent? d.parent.children.indexOf(d)+1 : 1)
+  .attr('aria-label', d=> `${d.data.name}, ${d.value} (${pct(d.value)}), level ${d.depth}`)
+  .on('click',(e,d)=>drill(d))
+  .on('keydown',(e,d)=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();drill(d);}
+    else if(e.key==='Escape'){e.preventDefault();clearHover(); if(focusNode!==root) drill(root);}
+    else if(e.key==='ArrowLeft'){e.preventDefault();siblingNavigate(d,-1);}
+    else if(e.key==='ArrowRight'){e.preventDefault();siblingNavigate(d,1);}
+    else if(e.key==='ArrowUp'){e.preventDefault(); ascendOne(d);}
+    else if(e.key==='ArrowDown'){e.preventDefault(); enterChild(d);}
+  })
+  .on('mouseover',(e,d)=>hover(d))
+  .on('focus',(e,d)=>hover(d))
+  .on('mousemove',e=>moveTooltip(e))
+  .on('mouseout',clearHover)
+  .on('blur',clearHover);
+
+paths.append('title')
+  .text(d=> d.ancestors().map(a=>a.data.name).reverse().join(' / ') + ': ' + d.value);
+
+/* Labels */
+const labels = g.append('g')
+  .attr('pointer-events','none')
+  .selectAll('text')
+  .data(root.descendants().filter(d=>d.depth))
+  .enter()
+  .append('text')
+  .attr('class','seg-label')
+  .attr('aria-hidden','true');
+
+function renderLabels(){
+  labels.each(function(d){
+    const spec = computeLabel(d);
+    const el = d3.select(this);
+    if(!spec.text){
+      el.attr('opacity',0).text('');
+      return;
+    }
+    el
+      .text(spec.text)
+      .attr('font-size',spec.font+'px')
+      .classed('condensed',spec.condensed)
+      .attr('textLength', spec.textLength? spec.textLength : null)
+      .attr('lengthAdjust', spec.textLength? 'spacingAndGlyphs': null)
+      .attr('opacity',1)
+      .attr('data-full', spec.full)
+      .attr('transform', labelTransform(d));
+  });
+}
+renderLabels();
+
+/* Center circle */
+const centerCircle = g.append('circle')
+  .attr('r', radius * .36)
+  .attr('fill','#fff')
+  .attr('stroke','#dfe5ea')
+  .attr('stroke-width',1.1)
+  .attr('cursor','pointer')
+  .attr('tabindex',0)
+  .attr('role','button')
+  .attr('aria-label','Reset focus to root')
+  .on('click',()=>drill(root))
+  .on('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();drill(root);}
+    if(e.key==='Escape'){e.preventDefault();clearHover();}
+  });
+
+const center = g.append('g').attr('class','center-group');
+center.append('text').attr('class','center-title').attr('y', -8);
+center.append('text').attr('class','center-value').attr('y', 12);
+center.append('text').attr('class','center-hint').attr('y', 30);
+
+function updateCenter(node){
+  center.select('.center-title').text(node.data.name);
+  center.select('.center-value').text(`${node.value} (${pct(node.value)})`);
+  center.select('.center-hint').text(node===root ? 'Select a segment to drill' : 'Up / center / Reset to ascend');
+  focusPathEl.textContent = node.ancestors().map(a=>a.data.name).reverse().join(' / ');
+  renderBreadcrumbs(node);
+}
+
+/* Breadcrumbs */
+function renderBreadcrumbs(node){
+  const ancestors = node.ancestors().reverse();
+  breadcrumbsEl.innerHTML='';
+  ancestors.forEach(a=>{
+    const b=document.createElement('button');
+    b.textContent=a.data.name;
+    b.classList.toggle('active', a===node);
+    b.addEventListener('click',()=>drill(a));
+    breadcrumbsEl.appendChild(b);
+  });
+}
+
+/* Legend */
+const legend = d3.select('#legend');
+data.children.forEach(cat=>{
+  legend.append('div')
+    .attr('class','legend-item')
+    .html(`<span class="swatch" style="background:${palette(cat.name)}"></span>
+           <span class="badge ${cat.name.replace(/ .*/,'')}">${cat.name}</span>`);
+});
+
+/* Interaction */
+let focusNode = root;
+updateCenter(root);
+
+function moveTooltip(e){
+  tooltip.style('left', e.pageX+'px')
+         .style('top', (e.pageY-30)+'px');
+}
+function hover(d){
+  const lineage = new Set(d.ancestors());
+  paths
+    .classed('dim', p=> !lineage.has(p) && p!==focusNode && !p.ancestors().includes(focusNode))
+    .classed('hover', p=> p===d);
+  labels.classed('dim', p=> !lineage.has(p) && p!==focusNode && !p.ancestors().includes(focusNode));
+  tooltip.classed('visible', true)
+    .attr('aria-hidden','false')
+    .html(`<strong>${d.data.name}</strong><br>${d.value} (${pct(d.value)})`);
+  updateCenter(d);
+  liveEl.textContent = `${d.data.name} ${d.value} (${pct(d.value)})`;
+}
+function clearHover(){
+  paths.classed('hover',false)
+       .classed('dim', p=> p!==focusNode && !p.ancestors().includes(focusNode));
+  labels.classed('dim', p=> p!==focusNode && !p.ancestors().includes(focusNode));
+  tooltip.classed('visible',false).attr('aria-hidden','true');
+  updateCenter(focusNode);
+}
+
+resetBtn.addEventListener('click', ()=>drill(root));
+
+function drill(node){
+  if(node===focusNode && node!==root){
+    node = node.parent || root;
+  }
+  focusNode = node;
+  resetBtn.disabled = focusNode===root;
+
+  root.each(d=>{
+    const isDesc = d.ancestors().includes(node);
+    d.target = {
+      x0:(d.x0 - node.x0)/(node.x1 - node.x0) * 2*Math.PI,
+      x1:(d.x1 - node.x0)/(node.x1 - node.x0) * 2*Math.PI,
+      y0:Math.max(0, d.y0 - node.y0),
+      y1:Math.max(0, d.y1 - node.y0)
+    };
+    if(!isDesc) d.target.x0 = d.target.x1;
+  });
+
+  const t = g.transition().duration(650).ease(d3.easeCubicOut);
+
+  paths.transition(t)
+    .attrTween('d', d=>{
+      const i = d3.interpolate(d.current, d.target);
+      return tt=>{
+        d.current = i(tt);
+        return arc({
+          x0:d.current.x0,x1:d.current.x1,
+          y0:d.current.y0,y1:d.current.y1
+        });
+      };
+    })
+    .style('pointer-events', d=> d.ancestors().includes(node) ? 'auto':'none')
+    .attr('aria-hidden', d=> d.ancestors().includes(node) ? 'false':'true')
+    .on('end', function(d){
+      if(Math.abs(d.current.x1 - d.current.x0) <= 1e-6){
+        d3.select(this).attr('tabindex', -1);
+      } else {
+        d3.select(this).attr('tabindex', 0);
+      }
+    });
+
+  labels.transition(t)
+    .attrTween('xform', d=>{
+      const i = d3.interpolate(d.current, d.target);
+      return tt=>{
+        d.current = i(tt);
+      };
+    })
+    .on('end', renderLabels)
+    .attr('transform', d=>labelTransform(d));
+
+  paths.classed('dim', p=> p!==focusNode && !p.ancestors().includes(focusNode));
+  labels.classed('dim', p=> p!==focusNode && !p.ancestors().includes(focusNode));
+  updateCenter(node);
+  liveAssertive.textContent = `Focused ${node.data.name}, ${node.value} (${pct(node.value)})`;
+  // focus current node if visible
+  const targetPath = paths.filter(p=>p===node).node();
+  if(targetPath) targetPath.focus();
+}
+
+/* Keyboard helpers */
+function siblingNavigate(d, dir){
+  if(!d.parent) return;
+  const sibs = d.parent.children;
+  const idx = sibs.indexOf(d);
+  const next = sibs[(idx + dir + sibs.length) % sibs.length];
+  const node = paths.filter(p=>p===next).node();
+  if(node){ node.focus(); hover(next); }
+}
+function ascendOne(d){
+  const target = d.parent || root;
+  const node = paths.filter(p=>p===target).node();
+  if(target===root){drill(root); centerCircle.node().focus(); return;}
+  if(node){ node.focus(); hover(target); drill(target); }
+}
+function enterChild(d){
+  if(!d.children || !d.children.length) return;
+  const first = d.children[0];
+  const node = paths.filter(p=>p===first).node();
+  if(node){ node.focus(); hover(first); }
+}
+
+/* PNG Export */
+dlBtn.addEventListener('click', ()=>{
+  const serializer = new XMLSerializer();
+  const clone = svg.node().cloneNode(true);
+  clone.querySelectorAll('[tabindex]').forEach(n=>n.removeAttribute('tabindex'));
+  const svgStr = serializer.serializeToString(clone);
+  const img = new Image();
+  const svgBlob = new Blob([svgStr], {type:'image/svg+xml;charset=utf-8'});
+  const url = URL.createObjectURL(svgBlob);
+  img.onload = function(){
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,w,h);
+    ctx.drawImage(img,0,0);
+    URL.revokeObjectURL(url);
+    const a = document.createElement('a');
+    a.download = 'cloud-management-sunburst.png';
+    a.href = c.toDataURL('image/png');
+    a.click();
+    liveEl.textContent = 'PNG download started';
+  };
+  img.src = url;
+});
+
+/* Esc global */
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    if(focusNode!==root){drill(root);}
+    else {clearHover();}
+  }
+});
+
+/* Init */
+updateCenter(root);
+paths.classed('dim', p=> p!==focusNode && !p.ancestors().includes(focusNode));
+</script>
+</body>
+</html>
