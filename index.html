@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Service Based Launchpad Status</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Service Based Launchpad status and service list">
+<style>
+:root{
+  --bg:#F6F8FA;--panel:#FFFFFF;--panel-alt:#F2F5F8;--panel-hover:#ECF2F7;
+  --border:#CFD8E1;--border-soft:#E2E9EF;
+  --text:#1A232C;--text-soft:#3E4F5B;--muted:#556675;
+  --accent:#0B63C7;--accent-hover:#084D9B;
+  --success:#1B7F3C;--danger:#C83532;--warn:#B77905;--inactive:#6B7785;--info:#1E5F92;
+  --tint-accent:#E3F0FA;--tint-success:#E4F5EA;--tint-danger:#FBE9E8;--tint-inactive:#E4E8EC;--tint-warn:#F9F0DA;
+  --focus:0 0 0 3px rgba(11,99,199,.42);
+  --radius:18px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  font-size:15px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:linear-gradient(180deg,#FAFBFC 0%,var(--bg) 140px);color:var(--text);-webkit-font-smoothing:antialiased;line-height:1.45;}
+h1,h2{margin:0;font-weight:600;line-height:1.2;}
+button{font-family:inherit;}
+a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
+.layout{max-width:1300px;margin:0 auto;padding:1rem 1.1rem 2rem;display:grid;gap:1rem;grid-template-columns:220px 1fr;}
+@media (max-width:880px){.layout{grid-template-columns:1fr;}}
+.left-column{display:flex;flex-direction:column;gap:.55rem;position:sticky;top:1rem;align-self:start;height:fit-content;}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem 1.05rem 1.1rem;display:flex;flex-direction:column;gap:.65rem;box-shadow:0 2px 6px -2px rgba(0,0,0,.06);}
+aside.panel{position:static;}
+.menu-title{font-size:.95rem;margin:0 0 .35rem;}
+.inline-note{font-size:.58rem;color:var(--muted);line-height:1.3;margin:0 0 .4rem;}
+.nav-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem;}
+.nav-btn{all:unset;cursor:not-allowed;border:1px solid var(--border-soft);background:var(--panel-alt);padding:.65rem .75rem;border-radius:14px;font-size:.65rem;font-weight:600;letter-spacing:.05em;color:var(--text-soft);}
+.nav-btn[aria-current="true"]{cursor:default;background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 2px 8px -3px rgba(11,99,199,.45);}
+.header-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;}
+.header-bar h1{display:flex;align-items:center;gap:.55rem;font-size:1.35rem;}
+.status-label{font-weight:700;letter-spacing:.05em;display:inline-flex;align-items:center;gap:.35rem;font-size:.68rem;padding:.35rem .65rem;border-radius:999px;background:var(--tint-accent);color:var(--info);}
+.status-label.enabled{background:var(--tint-success);color:var(--success);}
+.status-label.disabled{background:var(--tint-danger);color:var(--danger);}
+.status-label .icon{font-size:.85em;}
+.toggle-bar{display:flex;align-items:center;gap:1.1rem;flex-wrap:wrap;}
+.cluster{display:inline-flex;align-items:center;gap:.5rem;font-size:.58rem;font-weight:600;letter-spacing:.07em;color:var(--muted);}
+.status-switch{position:relative;display:inline-block;width:54px;height:28px;}
+.status-switch input{opacity:0;width:0;height:0;}
+.status-switch span{position:absolute;inset:0;background:#B5C1CC;border-radius:28px;cursor:pointer;transition:.28s;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);}
+.status-switch span:before{content:"";position:absolute;height:22px;width:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.28s;box-shadow:0 2px 4px rgba(0,0,0,.22);}
+.status-switch input:checked+span{background:var(--success);}
+.status-switch input:checked+span:before{transform:translateX(26px);}
+.role-select,.tenant-select{padding:.45rem .6rem;font-size:.62rem;border:1px solid var(--border);border-radius:10px;background:#fff;min-width:150px;color:var(--text);font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
+.role-select:focus,.tenant-select:focus{outline:none;box-shadow:var(--focus);border-color:var(--accent);}
+.desc-block{margin:0;font-size:.6rem;color:var(--text-soft);line-height:1.35;max-width:70ch;}
+.status-hint{font-size:.55rem;color:var(--muted);margin:0;}
+.tools-bar{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;}
+.search-box{position:relative;display:flex;}
+.search-box svg{position:absolute;left:.55rem;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:#607180;stroke-width:2;fill:none;}
+.search-box input{padding:.5rem .65rem .5rem 2rem;font-size:.66rem;border:1px solid var(--border);border-radius:10px;min-width:220px;background:#fff;color:var(--text);}
+.search-box input:focus{outline:none;box-shadow:var(--focus);border-color:var(--accent);}
+.filter-select{padding:.5rem .65rem;font-size:.66rem;border:1px solid var(--border);border-radius:10px;background:#fff;min-width:120px;color:var(--text);}
+.filter-select:focus{outline:none;box-shadow:var(--focus);border-color:var(--accent);}
+.clear-btn{background:#EEF2F5;border:1px solid var(--border);padding:.45rem .6rem;font-size:.52rem;font-weight:600;letter-spacing:.05em;border-radius:9px;cursor:pointer;color:var(--text-soft);}
+.clear-btn:disabled{opacity:.45;cursor:not-allowed;}
+.clear-btn:not(:disabled):hover{background:#E1E8ED;}
+.inline-stat{margin-left:auto;display:flex;flex-wrap:wrap;gap:.4rem;font-size:.5rem;color:var(--muted);}
+.count-chip,.inline-pill{background:var(--tint-accent);border:1px solid #C5DDEE;padding:2px 7px;border-radius:999px;font-size:.5rem;font-weight:600;letter-spacing:.05em;color:var(--info);}
+.active-filters{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem;font-size:.5rem;margin-top:-.25rem;}
+.filter-chip{background:var(--accent);color:#fff;padding:3px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:.35rem;font-weight:600;letter-spacing:.05em;}
+.filter-chip button{all:unset;cursor:pointer;font-size:.75em;line-height:1;padding:0 .25em;}
+.filter-chip button:focus-visible{outline:1px solid #fff;border-radius:4px;}
+.list-panel{gap:.55rem;position:relative;}
+.list-header h2{font-size:.9rem;margin:0;}
+.list-col-head{display:grid;grid-template-columns:minmax(170px,230px) 120px 140px 120px 74px;gap:.55rem;align-items:center;padding:0 .75rem .4rem;font-size:.5rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border-soft);}
+@media (max-width:760px){.list-col-head{display:none;}}
+.item-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.5rem;}
+.item{background:var(--panel-alt);border:1px solid var(--border-soft);border-radius:14px;padding:.7rem .8rem .75rem;display:grid;grid-template-columns:minmax(170px,230px) 120px 140px 120px 74px;gap:.55rem;align-items:start;transition:.18s;background-clip:padding-box;}
+.item:hover{background:var(--panel-hover);}
+@media (max-width:760px){.item{grid-template-columns:1fr;}}
+.item-title{font-size:.7rem;font-weight:600;margin:0 0 .2rem;line-height:1.2;color:var(--text);}
+.item-desc{font-size:.56rem;color:var(--text-soft);margin:0 0 .35rem;line-height:1.3;}
+.item-meta{font-size:.47rem;color:var(--muted);display:flex;gap:.45rem;flex-wrap:wrap;margin:0;}
+.highlight{background:#FFE49F;color:#3A2A00;padding:0 2px;border-radius:4px;}
+.pill{display:inline-flex;align-items:center;gap:.45rem;font-size:.56rem;font-weight:600;letter-spacing:.05em;padding:6px 10px;border-radius:999px;line-height:1;text-transform:uppercase;white-space:nowrap;background:#E3E9EF;color:var(--text);box-shadow:0 0 0 1px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.07);}
+.status-pill.active{background:var(--tint-success);color:var(--success);box-shadow:0 0 0 1px rgba(27,127,60,.3);}
+.status-pill.inactive{background:var(--tint-inactive);color:var(--inactive);box-shadow:0 0 0 1px rgba(0,0,0,.08);}
+.deploy-badge.success{background:var(--tint-success);color:var(--success);box-shadow:0 0 0 1px rgba(27,127,60,.25);}
+.deploy-badge.fail{background:var(--tint-danger);color:var(--danger);box-shadow:0 0 0 1px rgba(200,53,50,.25);}
+.deploy-badge.empty{background:#ECEFF2;color:#5B6672;box-shadow:0 0 0 1px rgba(0,0,0,.04);}
+.level-badge.tenant{background:var(--tint-accent);color:var(--accent);box-shadow:0 0 0 1px rgba(11,99,199,.28);}
+.level-badge.account{background:var(--tint-inactive);color:var(--inactive);box-shadow:0 0 0 1px rgba(0,0,0,.08);}
+.level-badge svg,.deploy-badge svg,.status-pill svg{width:.85em;height:.85em;display:block;}
+.enable-cell{display:flex;align-items:center;justify-content:flex-start;}
+.mini-switch{position:relative;display:inline-block;width:40px;height:20px;}
+.mini-switch input{opacity:0;width:0;height:0;}
+.mini-switch span{position:absolute;inset:0;background:#B5C1CC;border-radius:20px;cursor:pointer;transition:.22s;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05);}
+.mini-switch span:before{content:"";position:absolute;height:16px;width:16px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.22s;box-shadow:0 1px 3px rgba(0,0,0,.28);}
+.mini-switch input:checked+span{background:var(--success);}
+.mini-switch input:checked+span:before{transform:translateX(20px);}
+.mini-switch input:focus-visible+span{outline:none;box-shadow:var(--focus);}
+body.launchpad-disabled .mini-switch span{background:var(--tint-inactive);cursor:not-allowed;}
+body.launchpad-disabled .mini-switch input:checked+span{background:var(--inactive);}
+body.launchpad-disabled .item{opacity:.6;filter:grayscale(.15);}
+.deploy-cell{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}
+.deploy-last-run{font-size:.46rem;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;}
+.empty-hint{font-size:.58rem;color:var(--muted);padding:.3rem .1rem;margin:.2rem 0 0;}
+.fade-in{animation:fade .18s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+.tag-badge{background:#E8EEF2;color:var(--text-soft);padding:3px 6px;border-radius:6px;font-size:.44rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+footer{max-width:1300px;margin:1.4rem auto .8rem;padding:0 1.1rem;font-size:.5rem;color:var(--muted);text-align:center;}
+:focus-visible{outline:none;box-shadow:var(--focus);}
+.visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:0;clip:rect(1px,1px,1px,1px);clip-path:inset(50%);overflow:hidden;white-space:nowrap;border:0;}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+body:not(.show-enable-column) .list-col-head span:last-child{display:none;}
+body:not(.show-enable-column) .item{grid-template-columns:minmax(170px,230px) 120px 140px 120px;}
+body:not(.show-enable-column) .item .enable-cell{display:none;}
+.context-panel{gap:.75rem;}
+.context-panel h2{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;}
+.context-fields{display:flex;flex-direction:column;gap:.65rem;}
+.context-fields .field{display:flex;flex-direction:column;gap:.25rem;}
+.context-fields label{font-size:.55rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+@media (max-width:880px){
+  .left-column{position:static;}
+  .context-fields{flex-direction:row;flex-wrap:wrap;}
+  .context-fields .field{min-width:140px;}
+}
+.changes-bar{display:flex;justify-content:flex-end;margin-top:.65rem;}
+.submit-btn{
+  background:var(--accent);color:#fff;border:1px solid var(--accent);
+  font-size:.6rem;letter-spacing:.06em;font-weight:600;text-transform:uppercase;
+  padding:.55rem .95rem;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;
+  transition:.18s;
+}
+.submit-btn:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover);}
+.submit-btn:disabled{opacity:.45;cursor:not-allowed;background:#8fb7e4;border-color:#8fb7e4;}
+.submit-btn:focus-visible{outline:none;box-shadow:var(--focus);}
+.guide-panel{margin:0;padding:.9rem 1.05rem 1.1rem;}
+.guide-panel h2{font-size:.9rem;margin:0 0 .55rem;}
+.guide-list{margin:.1rem 0 .9rem;padding-left:1.15rem;font-size:.63rem;line-height:1.32;}
+.guide-list li{margin:.35rem 0;}
+.guide-panel strong{color:var(--text);}
+.guide-panel p{margin:.25rem 0;font-size:.58rem;line-height:1.3;}
+@media (max-width:880px){
+  .guide-list{font-size:.66rem;}
+}
+
+/* Added rules table */
+.rules-panel h2{font-size:.9rem;margin:0 0 .55rem;}
+.rules-table{width:100%;border-collapse:collapse;font-size:.58rem;letter-spacing:.04em;}
+.rules-table th,.rules-table td{border:1px solid var(--border-soft);padding:.45rem .55rem;text-align:left;vertical-align:top;}
+.rules-table th{background:var(--panel-alt);text-transform:uppercase;font-size:.52rem;font-weight:600;}
+.rules-table td[data-yes="true"]{background:var(--tint-success);color:var(--success);font-weight:600;}
+.rules-table td[data-no="true"]{background:var(--tint-inactive);color:var(--inactive);font-weight:600;}
+.rules-table code{background:#eef2f5;padding:2px 4px;border-radius:4px;font-size:.55rem;}
+@media (max-width:760px){
+  .rules-table{font-size:.62rem;}
+  .rules-table th{font-size:.56rem;}
+}
+</style>
+</head>
+<body>
+<a href="#main" class="visually-hidden">Skip to content</a>
+<div class="layout">
+  <div class="left-column">
+    <aside class="panel" aria-label="Primary navigation">
+      <h2 class="menu-title">Menu</h2>
+      <p class="inline-note" id="nav-note">Navigation locked to Service Based Launchpad.</p>
+      <ul class="nav-list" aria-describedby="nav-note">
+        <li><button class="nav-btn" disabled aria-disabled="true">Tenant Details</button></li>
+        <li><button class="nav-btn" disabled aria-disabled="true">Attestation Details</button></li>
+        <li><button class="nav-btn" disabled aria-disabled="true">Prisma Details</button></li>
+        <li><button class="nav-btn" aria-current="true" aria-label="Service Based Launchpad (active)">Service Based Launchpad</button></li>
+        <li><button class="nav-btn" disabled aria-disabled="true">Attestion Log</button></li>
+      </ul>
+    </aside>
+
+    <section class="panel context-panel" aria-labelledby="context-heading">
+      <h2 id="context-heading">Context</h2>
+      <div class="context-fields" role="group" aria-label="Tenant and Role selectors">
+        <div class="field">
+          <label for="tenant-type">Tenant Type</label>
+          <select id="tenant-type" class="tenant-select" aria-label="Select tenant type">
+            <option value="Managed" selected>Managed</option>
+            <option value="Restricted">Restricted</option>
+            <option value="Partially Managed">Partially Managed</option>
+            <option value="Unmanaged">Unmanaged</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="role-select">Role</label>
+          <select id="role-select" class="role-select" aria-label="Select role (Admin or Read Only)">
+            <option value="Admin" selected>Admin</option>
+            <option value="Read Only">Read Only</option>
+          </select>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <main id="main" style="display:flex;flex-direction:column;gap:1rem;min-width:0;">
+    <section class="panel header-panel" aria-labelledby="header-title">
+      <div class="header-bar">
+        <h1 id="header-title">
+          Service Based Launchpad Status
+          <span id="lp-status-label" class="status-label enabled" aria-live="polite">
+            <span class="icon" aria-hidden="true">✓</span>Enabled
+          </span>
+        </h1>
+        <div class="toggle-bar">
+          <div class="cluster" role="group" aria-label="Launchpad availability">
+            <span>Enable Layout</span>
+            <label class="status-switch">
+              <input id="lp-status-toggle" type="checkbox" aria-label="Toggle Launchpad editing" checked>
+              <span></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <p class="desc-block">
+        The "Enable" column is visible only for Admin role AND tenant types: Partially Managed or Unmanaged. Hidden for Managed, Restricted, and all Read Only roles.
+      </p>
+      <p class="status-hint" id="status-hint" aria-live="polite"></p>
+    </section>
+
+    <section class="panel list-panel" aria-labelledby="list-heading">
+      <div class="list-header" style="display:flex;flex-direction:column;gap:.55rem;">
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+          <h2 id="list-heading" style="margin-right:.25rem;">Services</h2>
+          <div class="tools-bar" role="group" aria-label="Filters">
+            <div class="search-box">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="16.6" y1="16.6" x2="21" y2="21"/></svg>
+              <input id="search-box" type="search" placeholder="Search..." aria-label="Search services">
+            </div>
+            <select id="status-filter" class="filter-select" aria-label="Filter by status">
+              <option value="all" selected>All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <button id="clear-filters" class="clear-btn" type="button" aria-label="Clear filters" disabled>Clear</button>
+            <div class="inline-stat" role="group" aria-label="Service counts: visible, total, active and inactive">
+              <span id="count-total" class="count-chip" aria-live="polite" aria-label="Visible services out of total services">0/0</span>
+              <span id="count-active" class="inline-pill" aria-label="Active services">Active:0</span>
+              <span id="count-inactive" class="inline-pill" aria-label="Inactive services">Inactive:0</span>
+            </div>
+          </div>
+        </div>
+        <div id="active-filters" class="active-filters" aria-live="polite"></div>
+      </div>
+      <div class="list-col-head" aria-hidden="true">
+        <span>Service</span><span>Status</span><span>Deployment</span><span>Level</span><span>Enable</span>
+      </div>
+      <ul class="item-list" id="item-list" aria-label="Service list" aria-live="polite"></ul>
+      <p id="empty-hint" class="empty-hint" hidden>No matching services.</p>
+      <div id="changes-bar" class="changes-bar" hidden>
+        <button id="submit-changes" class="submit-btn" type="button" aria-disabled="true" disabled>Submit Changes</button>
+      </div>
+    </section>
+
+    <section class="panel guide-panel" aria-labelledby="usage-heading">
+      <h2 id="usage-heading">How To Use This Launchpad UI</h2>
+      <ol class="guide-list">
+        <li><strong>Select Context:</strong> Choose Tenant Type & Role (Admin / Read Only).</li>
+        <li><strong>Enable Column Visibility:</strong> Only Admin + (Partially Managed | Unmanaged).</li>
+        <li><strong>Status Switch:</strong> “Enable Layout” disables all per‑service toggles without clearing choices.</li>
+        <li><strong>Search & Filter:</strong> Search matches name & description; status filter narrows by Active/Inactive.</li>
+        <li><strong>Active Filters Chips:</strong> Remove individual filters via the × buttons.</li>
+        <li><strong>Row Details:</strong> Name, description, updated time, deployment badge, level, optional toggle.</li>
+        <li><strong>Deployment Last Run:</strong> Only for Successful / Failed deployments.</li>
+        <li><strong>Staging:</strong> Unsaved changes enable Submit.</li>
+        <li><strong>Role Switch:</strong> Read Only hides enable column & submit bar.</li>
+        <li><strong>Tenant Switch:</strong> Loads new dataset; unsaved edits prompt.</li>
+        <li><strong>Keyboard:</strong> Tab to toggle; Space / Enter activates. Skip link available.</li>
+        <li><strong>Accessibility:</strong> Live regions announce key changes.</li>
+      </ol>
+      <p>Color legend: Green = active; Gray = inactive; Red = failed deployment; Blue = tenant level.</p>
+      <p>Tip: Disable layout to freeze current selections before changing tenant or role.</p>
+    </section>
+
+    <!-- Moved Role / Tenant Effects panel below Instructions -->
+    <section class="panel rules-panel" aria-labelledby="rules-heading">
+      <h2 id="rules-heading">Role / Tenant Effects</h2>
+      <table class="rules-table" aria-describedby="rules-note">
+        <thead>
+          <tr>
+            <th>Tenant Type</th>
+            <th>Role</th>
+            <th>Enable Column Visible</th>
+            <th>Toggles Interactive (Layout ON)</th>
+            <th>Submit Changes Bar</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="2">Managed</td>
+            <td>Admin</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td data-yes="true">✓</td>
+            <td>No enable column; submit bar still shows (Admin).</td>
+          </tr>
+          <tr>
+            <td>Read Only</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td>Read Only hides submit bar.</td>
+          </tr>
+          <tr>
+            <td rowspan="2">Restricted</td>
+            <td>Admin</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td data-yes="true">✓</td>
+            <td>Same as Managed.</td>
+          </tr>
+          <tr>
+            <td>Read Only</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td>All enable actions suppressed.</td>
+          </tr>
+          <tr>
+            <td rowspan="2">Partially Managed</td>
+            <td>Admin</td>
+            <td data-yes="true">✓</td>
+            <td data-yes="true">✓</td>
+            <td data-yes="true">✓</td>
+            <td>Interactive only if <code>Enable Layout</code> is ON.</td>
+          </tr>
+          <tr>
+            <td>Read Only</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td>Enable column hidden.</td>
+          </tr>
+          <tr>
+            <td rowspan="2">Unmanaged</td>
+            <td>Admin</td>
+            <td data-yes="true">✓</td>
+            <td data-yes="true">✓</td>
+            <td data-yes="true">✓</td>
+            <td>Same rules as Partially Managed.</td>
+          </tr>
+          <tr>
+            <td>Read Only</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td data-no="true">—</td>
+            <td>Read-only view.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p id="rules-note" style="margin:.55rem 0 0;font-size:.55rem;color:var(--muted);">
+        Enable column appears only for Admin + (Partially Managed | Unmanaged). If layout is disabled, switches disable but remain visible. Submit bar shows for Admin in all tenant types, activates only when staged changes exist.
+      </p>
+    </section>
+  </main>
+</div>
+
+<footer>Keyboard: Tab to toggle (when visible). Space / Enter changes enable state (layout enabled).</footer>
+
+<div id="live-region" class="visually-hidden" aria-live="polite"></div>
+<div id="live-assertive" class="visually-hidden" aria-live="assertive"></div>
+
+<script>
+(()=>{
+  let seq=0;
+  const now=()=>Date.now();
+  const minutesAgo=m=>now()-m*60000;
+  const svc=(name,active,deployment,level,updatedM,lastRunM,desc)=>
+    ({id:++seq,name,active,deployment,level,updated:minutesAgo(updatedM),lastRun:lastRunM!=null?minutesAgo(lastRunM):minutesAgo(updatedM+8),desc});
+
+  const DATASETS = {
+    'Managed': [
+      svc('Identity Core', true,'Successful','tenant',8,16,'Central authentication & SSO integration.'),
+      svc('Policy Engine', true,'Successful','tenant',21,34,'Organizational policy evaluation & enforcement.'),
+      svc('Billing Reconciliation', true,'','account',55,70,'Maps usage metrics to invoice line items.'),
+      svc('Secrets Vault', true,'Successful','tenant',13,26,'Managed secret storage & key rotations.'),
+      svc('Compliance Scanner', true,'Failed','tenant',41,58,'Baseline compliance and drift detection.'),
+      svc('Geo Replicator', false,'','account',95,120,'Cross-region replication for critical datasets.')
+    ],
+    'Restricted': [
+      svc('Access Registry', true,'Successful','tenant',6,14,'Registry of tenant & account access grants.'),
+      svc('Audit Log Stream', true,'Successful','tenant',32,60,'Immutable audit trail export & retention.'),
+      svc('Tag Normalizer', false,'Failed','tenant',18,36,'Enforces unified tagging conventions.'),
+      svc('Sensitive Data Gateway', true,'','account',75,140,'Broker for sensitive data egress.'),
+      svc('Change Guard', false,'','tenant',52,90,'Restricts high-risk mutation operations.')
+    ],
+    'Partially Managed': [
+      svc('Notification Service', true,'Failed','tenant',9,18,'Email / SMS dispatch pipeline.'),
+      svc('Report Generator', true,'Successful','tenant',25,36,'Automated scheduled report production.'),
+      svc('Cache Layer', false,'Successful','account',180,210,'Low-latency distributed in-memory cache.'),
+      svc('Webhook Relay', false,'Failed','account',6,14,'Third-party webhook ingestion & relay.'),
+      svc('Tag Normalizer', true,'Successful','tenant',11,24,'Tag enforcement across asset inventory.'),
+      svc('Image Optimizer', false,'','account',95,140,'On-demand media optimization & resizing.')
+    ],
+    'Unmanaged': [
+      svc('Prototype ML', true,'Successful','account',58,70,'Experimental model training environment.'),
+      svc('Custom Analytics', true,'','tenant',33,46,'Ad-hoc analytics & exploration stack.'),
+      svc('Data Sandbox', false,'Failed','account',14,29,'Isolated data experimentation workspace.'),
+      svc('Internal Dashboard', true,'Successful','tenant',7,15,'Legacy dashboard for internal ops.'),
+      svc('Webhook Relay', true,'Successful','account',4,12,'Inbound webhook transformation & routing.'),
+      svc('Image Optimizer', false,'Failed','account',121,180,'Media optimization & CDN preprocessing.')
+    ]
+  };
+
+  let services = [];
+  let baseline = [];
+
+  function safeLoadDataset(type){
+    if(!DATASETS[type]){ services=[]; baseline=[]; return; }
+    services = DATAETS_CLONE(type);
+  }
+  function DATAETS_CLONE(type){
+    return DATASETS[type].map(s=>({...s}));
+  }
+  function loadDataset(type){
+    safeLoadDataset(type);
+    baseline = services.map(s=>({id:s.id, active:s.active}));
+  }
+
+  const listEl = document.getElementById('item-list');
+  const emptyHint = document.getElementById('empty-hint');
+  const statusToggle = document.getElementById('lp-status-toggle');
+  const statusLabel = document.getElementById('lp-status-label');
+  const roleSelect = document.getElementById('role-select');
+  const tenantTypeSelect = document.getElementById('tenant-type');
+  const searchBox = document.getElementById('search-box');
+  const statusFilter = document.getElementById('status-filter');
+  const clearBtn = document.getElementById('clear-filters');
+  const statusHint = document.getElementById('status-hint');
+  const activeFiltersEl = document.getElementById('active-filters');
+  const submitBtn = document.getElementById('submit-changes');
+  const changesBar = document.getElementById('changes-bar');
+  const live = document.getElementById('live-region');
+  const liveAssert = document.getElementById('live-assertive');
+  const countTotal = document.getElementById('count-total');
+  const countActive = document.getElementById('count-active');
+  const countInactive = document.getElementById('count-inactive');
+
+  let launchpadActive = true;
+  let role = 'Admin';
+  let tenantType = 'Managed';
+  let query = '';
+  let statusSel = 'all';
+  let renderQueued=false;
+
+  const ENABLE_OK_TYPES = new Set(['Partially Managed','Unmanaged']);
+
+  const rel = ts => {
+    const diff = Date.now()-ts;
+    const m = (diff/60000)|0;
+    if(m<60) return m+'m ago';
+    const h=(m/60)|0;
+    if(h<24) return h+'h ago';
+    return ((h/24)|0)+'d ago';
+  };
+
+  const announce = (msg,important=false)=>{
+    const node=important?liveAssert:live;
+    node.textContent='';
+    setTimeout(()=>{node.textContent=msg;},20);
+  };
+
+  const escapeHTML = str => str
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+
+  const highlightMatch = text =>{
+    const safe = escapeHTML(text);
+    if(!query) return safe;
+    const escQ = query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    return safe.replace(new RegExp('('+escQ+')','ig'),'<span class="highlight">$1</span>');
+  };
+
+  function hasChanges(){
+    return services.some(s=>{
+      const b = baseline.find(x=>x.id===s.id);
+      return !b || b.active !== s.active;
+    });
+  }
+
+  function updateChangeUI(){
+    const admin = role === 'Admin';
+    changesBar.hidden = !admin;
+    if(!admin){ return; }
+    const changed = hasChanges();
+    submitBtn.disabled = !changed;
+    submitBtn.setAttribute('aria-disabled', submitBtn.disabled);
+  }
+
+  const ICONS = {
+    check:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 8.5 6.5 12 13 4"/></svg>',
+    cross:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M3 3l10 10M13 3 3 13"/></svg>',
+    up:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M7.24 3.3 2.2 10.6c-.46.66 0 1.4.82 1.4h9.96c.82 0 1.28-.74.82-1.4L8.76 3.3a1 1 0 0 0-1.52 0Z"/></svg>',
+    tenant:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2 2h12v12H2z" opacity=".35"/><path fill="currentColor" d="M4 4h2v2H4zm0 3h2v2H4zm0 3h2v2H4zm3-6h2v2H7zm0 3h2v2H7zm0 3h2v2H7zm3-6h2v2h-2zm0 3h2v2h-2z"/></svg>',
+    account:'<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5" r="3" fill="currentColor"/><path fill="currentColor" d="M2.5 13.5c0-3 2.4-5 5.5-5s5.5 2 5.5 5v.5h-11z" opacity=".8"/></svg>'
+  };
+
+  const statusPill = active =>{
+    const cls=active?'active':'inactive';
+    const icon=active?ICONS.check:ICONS.cross;
+    const label=active?'Active':'Inactive';
+    return `<span class="pill status-pill ${cls}" aria-label="Status ${label}">${icon}<span class="txt">${label}</span></span>`;
+  };
+  const deployBadge = d =>{
+    if(!d) return `<span class="pill deploy-badge empty" aria-label="Deployment status: No data">—</span>`;
+    const ok=d==='Successful';
+    const icon=ok?ICONS.up:ICONS.cross;
+    const cls=ok?'success':'fail';
+    return `<span class="pill deploy-badge ${cls}" aria-label="Deployment status: ${d}">${icon}<span class="txt">${d}</span></span>`;
+  };
+  const levelBadge = l =>{
+    const icon=l==='tenant'?ICONS.tenant:ICONS.account;
+    const cls=l==='tenant'?'tenant':'account';
+    const label=l==='tenant'?'Tenant':'Account';
+    return `<span class="pill level-badge ${cls}" aria-label="Level ${label}">${icon}<span class="txt">${label}</span></span>`;
+  };
+
+  const filtered = () => services.filter(s=>{
+    const qOk = !query || s.name.toLowerCase().includes(query) || s.desc.toLowerCase().includes(query);
+    const stOk = statusSel==='all' || (statusSel==='active'?s.active:!s.active);
+    return qOk && stOk;
+  });
+
+  function updateCounts(list){
+    const total=services.length;
+    const act=services.filter(s=>s.active).length;
+    countTotal.textContent=list.length+'/'+total;
+    countActive.textContent='Active:'+act;
+    countInactive.textContent='Inactive:'+(total-act);
+  }
+
+  function enableColumnAllowed(){
+    return role==='Admin' && ENABLE_OK_TYPES.has(tenantType);
+  }
+
+  function buildItemHTML(s){
+    const includeEnable = enableColumnAllowed();
+    const canEditEnable = includeEnable && launchpadActive;
+    const checked = s.active?'checked':'';
+    const disabledAttr = canEditEnable?'':'disabled';
+    const ariaDis = canEditEnable?'false':'true';
+    const enableCell = includeEnable ? `
+        <div class="enable-cell">
+          <label class="mini-switch">
+            <input type="checkbox"
+                   role="switch"
+                   data-act="toggle"
+                   data-id="${s.id}"
+                   ${checked}
+                   ${disabledAttr}
+                   aria-disabled="${ariaDis}"
+                   aria-label="Enable ${escapeHTML(s.name)}"
+                   aria-checked="${s.active}">
+            <span></span>
+          </label>
+        </div>` : '';
+    const showLastRun = s.deployment === 'Successful' || s.deployment === 'Failed';
+    return `
+      <li class="item fade-in" data-id="${s.id}">
+        <div>
+          <h3 class="item-title" id="svc-${s.id}">${highlightMatch(s.name)}</h3>
+          <p class="item-desc">${highlightMatch(s.desc)}</p>
+          <p class="item-meta">
+            <time datetime="${new Date(s.updated).toISOString()}" aria-label="Updated ${rel(s.updated)}">Updated ${rel(s.updated)}</time>
+            <span class="tag-badge">${s.active?'active':'inactive'}</span>
+          </p>
+        </div>
+        <div>${statusPill(s.active)}</div>
+        <div class="deploy-cell">
+          ${deployBadge(s.deployment)}
+          ${showLastRun ? `<div class="deploy-last-run">
+            <time datetime="${new Date(s.lastRun).toISOString()}" aria-label="Last run ${rel(s.lastRun)}">Last Run: ${rel(s.lastRun)}</time>
+          </div>` : ``}
+        </div>
+        <div>${levelBadge(s.level)}</div>
+        ${enableCell}
+      </li>`;
+  }
+
+  function renderActiveFilters(){
+    const chips=[];
+    if(query) chips.push(`<span class="filter-chip" data-chip="q">Query: "${escapeHTML(query)}" <button aria-label="Clear search" data-clear="q">×</button></span>`);
+    if(statusSel!=='all') chips.push(`<span class="filter-chip" data-chip="status">Status: ${statusSel} <button aria-label="Clear status filter" data-clear="status">×</button></span>`);
+    activeFiltersEl.innerHTML=chips.join('');
+    activeFiltersEl.hidden=!chips.length;
+  }
+
+  function render(){
+    if(renderQueued) renderQueued=false;
+    const activeEl=document.activeElement;
+    let focusServiceId=null;
+    if(activeEl && activeEl.dataset && activeEl.dataset.id) focusServiceId=activeEl.dataset.id;
+    else if(activeEl && activeEl.closest && activeEl.closest('.item')){
+      const inp=activeEl.closest('.item').querySelector('input[data-act="toggle"]');
+      if(inp) focusServiceId=inp.dataset.id;
+    }
+    document.body.classList.toggle('show-enable-column', enableColumnAllowed());
+    listEl.innerHTML='';
+    const list=filtered();
+    if(!list.length){
+      emptyHint.hidden=false;
+    }else{
+      emptyHint.hidden=true;
+      listEl.innerHTML=list.map(buildItemHTML).join('');
+    }
+    updateCounts(list);
+    renderActiveFilters();
+    updateChangeUI();
+    if(focusServiceId){
+      const candidate=listEl.querySelector(`input[data-id="${focusServiceId}"]`);
+      if(candidate && !candidate.disabled){
+        candidate.focus();
+      }
+    }
+  }
+
+  function queueRender(){
+    if(renderQueued) return;
+    renderQueued=true;
+    requestAnimationFrame(render);
+  }
+
+  function setStatusFromToggle(svc,on){
+    if(svc.active===on) return;
+    svc.active=on;
+    svc.updated=now();
+    announce(`${svc.name} ${on?'enabled':'disabled'}`);
+  }
+
+  function updateStatusHint(){
+    if(role!=='Admin'){
+      statusHint.textContent='Read Only mode: Enable column hidden.';
+      return;
+    }
+    if(!ENABLE_OK_TYPES.has(tenantType)){
+      statusHint.textContent=`Admin: Enable column hidden for ${tenantType} tenant type.`;
+      return;
+    }
+    statusHint.textContent = launchpadActive
+      ? `Admin: Enable column active for ${tenantType}.`
+      : `Admin: layout disabled; no toggles (${tenantType}).`;
+  }
+
+  function confirmDiscard(){
+    return !hasChanges() || confirm('Discard unsaved staged changes?');
+  }
+
+  listEl.addEventListener('change',e=>{
+    if(!enableColumnAllowed() || !launchpadActive) return;
+    const input=e.target.closest('input[data-act="toggle"]');
+    if(!input) return;
+    const id=+input.dataset.id;
+    const svc=services.find(s=>s.id===id);
+    if(!svc) return;
+    setStatusFromToggle(svc,input.checked);
+    input.setAttribute('aria-checked', String(input.checked));
+    updateChangeUI();
+    queueRender();
+  });
+
+  listEl.addEventListener('keydown',e=>{
+    if(!enableColumnAllowed() || !launchpadActive) return;
+    if(e.key==='Enter'||e.key===' '){
+      const input=e.target.matches('input[data-act="toggle"]')?e.target:e.target.querySelector('input[data-act="toggle"]');
+      if(input && !input.disabled){
+        e.preventDefault();
+        input.checked=!input.checked;
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+    }
+  });
+
+  statusToggle.addEventListener('change',()=>{
+    launchpadActive=statusToggle.checked;
+    const enabled=launchpadActive;
+    statusLabel.classList.toggle('enabled',enabled);
+    statusLabel.classList.toggle('disabled',!enabled);
+    statusLabel.innerHTML=enabled?'<span class="icon" aria-hidden="true">✓</span>Enabled':'<span class="icon" aria-hidden="true">✕</span>Disabled';
+    document.body.classList.toggle('launchpad-disabled',!enabled);
+    updateStatusHint();
+    announce('Layout '+(enabled?'enabled':'disabled'),true);
+    queueRender();
+  });
+
+  roleSelect.addEventListener('change',()=>{
+    if(!confirmDiscard()){ roleSelect.value=role; return; }
+    role=roleSelect.value;
+    updateStatusHint();
+    announce('Role set to '+role,true);
+    updateChangeUI();
+    queueRender();
+  });
+
+  tenantTypeSelect.addEventListener('change',()=>{
+    if(!confirmDiscard()){ tenantTypeSelect.value=tenantType; return; }
+    tenantType=tenantTypeSelect.value;
+    loadDataset(tenantType);
+    announce('Tenant type set to '+tenantType,true);
+    updateStatusHint();
+    updateChangeUI();
+    queueRender();
+  });
+
+  function updateFilterState(){
+    query=searchBox.value.trim().toLowerCase();
+    statusSel=statusFilter.value;
+    const changed=query || statusSel!=='all';
+    clearBtn.disabled=!changed;
+    queueRender();
+  }
+
+  let typeTimer;
+  searchBox.addEventListener('input',()=>{
+    clearTimeout(typeTimer);
+    typeTimer=setTimeout(updateFilterState,160);
+  });
+  statusFilter.addEventListener('change',updateFilterState);
+
+  clearBtn.addEventListener('click',()=>{
+    searchBox.value='';
+    statusFilter.value='all';
+    updateFilterState();
+    searchBox.focus();
+  });
+
+  activeFiltersEl.addEventListener('click',e=>{
+    const btn=e.target.closest('button[data-clear]');
+    if(!btn) return;
+    const type=btn.dataset.clear;
+    if(type==='q') searchBox.value='';
+    if(type==='status') statusFilter.value='all';
+    updateFilterState();
+  });
+
+  submitBtn.addEventListener('click',()=>{
+    if(submitBtn.disabled) return;
+    baseline = services.map(s=>({id:s.id, active:s.active}));
+    announce('Changes submitted', true);
+    updateChangeUI();
+  });
+
+  loadDataset(tenantType);
+  updateStatusHint();
+  updateChangeUI();
+  render();
+})();
+</script>
+</body>
+</html>
