@@ -1,0 +1,614 @@
+<html>
+<head>
+    <title>Service Based Launchpad Management Console</title>
+    <style>
+        /* Tile container style */
+        #app-tile {
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            max-width: 950px; /* Slightly wider to accommodate new tabs */
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+        }
+
+        /* NEW: HIGH-LEVEL NAVIGATION STYLES */
+        .primary-nav { 
+            display: flex; 
+            border-bottom: 3px solid #007bff; 
+            margin-bottom: 20px; 
+            background-color: #f0f0f0;
+            padding: 0 5px;
+            border-radius: 6px 6px 0 0;
+        }
+        .primary-tab { 
+            padding: 12px 25px; 
+            color: #333; 
+            cursor: pointer; 
+            transition: background-color 0.2s, color 0.2s;
+            font-weight: bold;
+            border-right: 1px solid #e0e0e0;
+        }
+        .primary-tab.active { 
+            background-color: #007bff; 
+            color: white; 
+            border-radius: 6px 6px 0 0;
+            border: none;
+        }
+        .primary-tab:hover:not(.active) {
+            background-color: #e2e6ea;
+        }
+
+        /* Existing Tab Bar (now secondary) */
+        .secondary-tab-bar { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; }
+        .secondary-tab { padding: 10px 20px; border-top-left-radius: 6px; border-top-right-radius: 6px; color: #555; cursor: pointer; background-color: #f0f0f0; transition: background-color 0.2s; }
+        .secondary-tab.active { background-color: #007bff; color: white; font-weight: bold; }
+        
+        /* [CORE STYLES] */
+        .container {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Segoe UI', sans-serif;
+            max-width: 910px;
+            margin-bottom: 20px;
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; border: 1px solid #eee; }
+        th { background-color: #eaf3ff; border: 1px solid #ddd; text-align: left; }
+        .status-active { background-color: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; }
+        .status-inactive { background-color: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px; }
+        .deploy-success { color: #155724; font-weight: bold; }
+        .deploy-failed { color: #721c24; font-weight: bold; }
+        .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2196F3; }
+        input:checked + .slider:before { transform: translateX(14px); }
+        #search-area { display: flex; align-items: flex-end; gap: 15px; margin-bottom: 20px; }
+        #search-container { position: relative; flex-grow: 1; max-width: 400px; }
+        #account-search {
+            padding: 10px 30px 10px 10px;
+            border: 1px solid #007bff;
+            border-radius: 4px;
+            font-size: 1em;
+            width: 100%;
+            box-sizing: border-box; 
+            background: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007bff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-24.8%200L146.2%20186.1%2030.3%2069.4a17.6%2017.6%200%200%200-24.8%2024.9l130%20129.9a17.6%2017.6%200%200%200%2024.8%200l130-129.9a17.6%2017.6%200%200%200%200-24.9z%22%2F%3E%3C%2Fsvg%3E') no-repeat right 8px center / 12px;
+            cursor: pointer;
+        }
+        #search-results, #tenant-search-results {
+            position: absolute;
+            z-index: 20;
+            width: 100%;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .search-result-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.1s; display: flex; justify-content: space-between; }
+        .search-result-item:hover { background-color: #eaf3ff; }
+        .search-result-id { color: #999; font-size: 0.9em; }
+        .no-results { padding: 10px; color: #999; font-style: italic; }
+        #tenant-search-results .search-result-item { z-index: 21; }
+        
+        /* New View Styles */
+        .content-view { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="app-tile">
+    <h2 style="margin-top: 0; color: #007bff;">Service Based Launchpad Management Console</h2>
+    
+    <div class="primary-nav">
+        <div id="tab-dashboard" class="primary-tab">Dashboard</div>
+        <div id="tab-entity" class="primary-tab">Entity</div>
+        <div id="tab-tenant-management" class="primary-tab">Tenant</div>
+        <div id="tab-account-management" class="primary-tab">Account</div>
+        <div id="tab-services" class="primary-tab active">Services</div>
+        <div id="tab-import" class="primary-tab">Import</div>
+        <div id="tab-about" class="primary-tab">About</div>
+    </div>
+    
+    <div id="view-dashboard" class="content-view">
+        <p style="padding: 20px; border: 1px solid #ddd; background-color: #fff;">Welcome to the Dashboard. Select a **Tenant** above the Services tab to begin configuration.</p>
+    </div>
+
+    <div id="view-entity" class="content-view">
+        <p style="padding: 20px; border: 1px solid #ddd; background-color: #fff;">Entity Management: Define and manage organizational entities here.</p>
+    </div>
+
+    <div id="view-tenant-management" class="content-view">
+        <p style="padding: 20px; border: 1px solid #ddd; background-color: #fff;">Tenant Creation and General Settings: Add, remove, or modify high-level tenant properties.</p>
+    </div>
+
+    <div id="view-account-management" class="content-view">
+        <p style="padding: 20px; border: 1px solid #ddd; background-color: #fff;">Account Administration: User limits, billing profiles, and account status management.</p>
+    </div>
+    
+    <div id="view-import" class="content-view">
+        <p style="padding: 20px; border: 1px solid #ddd; background-color: #fff;">Data Import Tools: Bulk upload configuration or service usage data.</p>
+    </div>
+
+    <div id="view-about" class="content-view">
+        <p style="padding: 20px; border: 1px solid #ddd; background-color: #fff;">Application Version and Documentation Links.</p>
+    </div>
+
+
+    <div id="view-services" class="content-view active">
+
+        <div id="tenant-selector-area" style="margin-bottom: 25px; padding: 15px; border: 1px solid #ccc; border-radius: 6px; background-color: #f7f7f7;">
+            <label for="tenant-search" style="font-weight: bold; color: #333; display: block; margin-bottom: 8px;">Select Tenant (Your Organization):</label>
+            <div id="tenant-search-container" style="position: relative; max-width: 400px;">
+                <input type="text" id="tenant-search" placeholder="Click or type tenant name/ID" style="padding: 10px; border: 1px solid #007bff; border-radius: 4px; font-size: 1em; width: 100%; box-sizing: border-box;">
+                <div id="tenant-search-results"></div>
+            </div>
+            <span id="selected-tenant-display" style="margin-top: 10px; display: block; color: #007bff; font-weight: bold;">Current Tenant: Select a Tenant</span>
+        </div>
+        
+        <details style="margin-bottom: 25px; border: 1px solid #007bff; border-radius: 6px; padding: 15px; background-color: #f0f8ff;">
+            <summary style="font-weight: bold; cursor: pointer; color: #007bff; font-size: 1.1em;">Service Configuration Instructions 🚀</summary>
+            <div style="padding-top: 15px;">
+                <h3 style="margin-top: 0; color: #333;">1. Tenant Services Tab</h3>
+                <p>Displays services applicable globally across the **selected tenant**.</p>
+    
+                <h3 style="color: #333;">2. Account Services Tab</h3>
+                <p>Allows you to manage services for individual accounts within the **selected tenant**.</p>
+                
+                <h4 style="color: #333; margin-bottom: 5px;">Account Search/Select Feature</h4>
+                <ul style="padding-left: 20px;">
+                    <li><strong style="color: #007bff;">Start Typing:</strong> Use **autocomplete** to efficiently filter the 2000 accounts.</li>
+                    <li><strong style="color: #007bff;">View Related:</strong> Clicking the empty search box displays the 5 accounts immediately following the currently loaded account.</li>
+                </ul>
+            </div>
+        </details>
+
+        <div class="container">
+            <div class="secondary-tab-bar">
+                <div id="tenant-tab" class="secondary-tab active">Tenant Services</div>
+                <div id="account-tab" class="secondary-tab">Account Services</div>
+            </div>
+    
+            <div id="tenant-view">
+                <h3 style="margin-top: 0; color: #333;">Tenant Services Management</h3>
+                <p id="tenant-service-info" style="color: #666; font-size: 0.9em;">Please select a tenant to view global services.</p>
+                
+                <table id="tenant-services-table">
+                    <thead>
+                        <tr><th>Service</th><th>Status</th><th>Deployment</th><th>Enable</th></tr>
+                    </thead>
+                    <tbody id="tenant-table-body">
+                        </tbody>
+                </table>
+            </div>
+    
+            <div id="account-view" style="display:none;">
+                <h3 style="margin-top: 0; color: #333;">Account Services Management</h3>
+                <p style="color: #666; font-size: 0.9em;">Select an account below to view and manage its specific service data.</p>
+                
+                <div id="search-area">
+                    <div id="search-container">
+                        <label for="account-search" style="font-weight: bold; color: #333; display: block; margin-bottom: 5px;">Select/Search Account (2000 available):</label>
+                        <input type="text" id="account-search" placeholder="Click or type account name/ID" disabled>
+                        <div id="search-results"></div>
+                    </div>
+                    <span id="selected-account-tag"></span>
+                </div>
+    
+                <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+    
+                <h3 id="account-title" style="margin-top: 0; color: #333;">No Account Selected</h3>
+                <p id="account-status-text" style="color: #666; font-size: 0.9em;">Please select an account within the current tenant to view services.</p>
+    
+                <table id="account-services-table" style="display:none;">
+                    <thead>
+                        <tr><th>Service</th><th>Status</th><th>Deployment</th><th>Enable</th></tr>
+                    </thead>
+                    <tbody id="account-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const NUM_ACCOUNTS = 2000;
+        const NUM_TENANTS = 400; 
+
+        // --- GLOBAL ELEMENTS ---
+        const primaryTabs = document.querySelectorAll('.primary-tab');
+        const contentViews = document.querySelectorAll('.content-view');
+        
+        // --- NEW TENANT ELEMENTS ---
+        const tenantSearch = document.getElementById('tenant-search');
+        const tenantSearchResults = document.getElementById('tenant-search-results');
+        const selectedTenantDisplay = document.getElementById('selected-tenant-display');
+        const tenantServiceInfo = document.getElementById('tenant-service-info');
+        const tenantTableBody = document.getElementById('tenant-table-body');
+
+        // --- SECONDARY (SERVICES) ELEMENTS ---
+        const accountSearch = document.getElementById('account-search');
+        const searchResults = document.getElementById('search-results');
+        const accountTitle = document.getElementById('account-title');
+        const accountStatusText = document.getElementById('account-status-text');
+        const accountTable = document.getElementById('account-services-table');
+        const accountTableBody = document.getElementById('account-table-body');
+        
+        const tenantTab = document.getElementById('tenant-tab');
+        const accountTab = document.getElementById('account-tab');
+        const tenantView = document.getElementById('tenant-view');
+        const accountView = document.getElementById('account-view');
+
+        // --- GLOBAL STATE ---
+        let currentTenantId = null;
+        let currentAccountId = null;
+        let allTenants = [];
+        let allAccounts = []; 
+
+        // --- A. DATA GENERATION (400 TENANTS) ---
+        const tenantNames = ["Acme", "Global", "Zeta", "Innovate", "Precision", "Future", "Delta", "Nexus", "Synergy", "Apex"];
+        for (let i = 1; i <= NUM_TENANTS; i++) {
+            const id = 'TID-' + String(i).padStart(3, '0');
+            const nameIndex = i % tenantNames.length;
+            const suffix = i % 7 === 0 ? 'Inc.' : i % 3 === 0 ? 'Ltd.' : 'Corp.';
+            const name = tenantNames[nameIndex] + ' ' + (Math.floor(i / tenantNames.length) + 1) + ' ' + suffix;
+            allTenants.push({ id, name });
+        }
+
+
+        // --- B. TENANT-SPECIFIC DATA FUNCTIONS ---
+
+        function generateTenantAccounts(tenantId) {
+            allAccounts = [];
+            const tenantSeed = parseInt(tenantId.split('-')[1]);
+            
+            for (let i = 1; i <= NUM_ACCOUNTS; i++) {
+                const id = tenantId + '-A' + String(i).padStart(4, '0');
+                const name = 'Account-' + String(i).padStart(4, '0') + (i % 5 === 0 ? ': Marketing' : i % 3 === 0 ? ': Development' : ': General');
+                allAccounts.push({ id, name });
+            }
+        }
+        
+        function getTenantServices(tenantId) {
+             const seed = parseInt(tenantId.split('-')[1]);
+             const baseServices = [
+                'Data Analytics Pro', 'Cloud Storage Basic', 'Project Management Suite', 'Security Audit Service', 'Global VPN Access'
+             ];
+             
+             return baseServices.map((service, index) => {
+                const statusRand = (seed * 0.45 + index) % 1;
+                const deployRand = (seed * 0.3 + index) % 1;
+                const enabledRand = (seed * 0.7 + index) % 1;
+
+                let status = statusRand < 0.75 ? 'Active' : 'Inactive';
+                let deploy = '';
+                let enabled = enabledRand < 0.9;
+                
+                if (status === 'Active' && deployRand < 0.3) {
+                    deploy = 'Successful';
+                } else if (status === 'Active' && deployRand < 0.4) {
+                     deploy = 'Failed';
+                }
+
+                return { name: service, status, deploy, enabled };
+             });
+        }
+
+        function getAccountData(accountId) {
+            const accountNum = accountId.split('-A')[1]; 
+            const accountName = allAccounts.find(a => a.id.endsWith('-A' + accountNum)).name;
+
+            const data = {
+                name: accountName,
+                services: [
+                    { name: 'Secure Messaging', type: '(Tenant-wide)' },
+                    { name: 'Data Analytics Pro', type: '(Tenant-wide)' },
+                    { name: 'Account Specific CRM', type: '' },
+                    { name: 'Dev Toolchain Pro', type: '' }
+                ].map((s, index) => {
+                    const seed = parseInt(accountNum) + index;
+                    const statusRand = (seed * 0.45) % 1;
+                    const deployRand = (seed * 0.3) % 1;
+                    const enabledRand = (seed * 0.7) % 1;
+
+                    let status = statusRand < 0.75 ? 'Active' : 'Inactive';
+                    let deploy = '';
+                    let enabled = enabledRand < 0.9;
+                    
+                    if (status === 'Active' && deployRand < 0.3) {
+                        deploy = 'Successful';
+                    } else if (status === 'Active' && deployRand < 0.4) {
+                         deploy = 'Failed';
+                    }
+                    return { ...s, status, deploy, enabled };
+                })
+            };
+            return data;
+        }
+
+
+        // --- C. PRIMARY TAB SWITCHING LOGIC ---
+
+        function switchPrimaryTab(targetId) {
+            // Deactivate all primary tabs and hide all content views
+            primaryTabs.forEach(tab => tab.classList.remove('active'));
+            contentViews.forEach(view => view.style.display = 'none');
+
+            // Activate the clicked tab and show its content view
+            const activeTab = document.getElementById(`tab-${targetId}`);
+            const activeView = document.getElementById(`view-${targetId}`);
+            
+            if (activeTab) activeTab.classList.add('active');
+            if (activeView) activeView.style.display = 'block';
+
+            // Special handling for the Services tab
+            if (targetId === 'services') {
+                // When switching to Services, ensure the secondary tab system is initialized
+                showTenantView();
+            }
+        }
+
+        // --- D. SECONDARY (SERVICES) TAB LOGIC ---
+
+        function showTenantView() {
+            // Secondary tab switching logic
+            tenantView.style.display = 'block';
+            accountView.style.display = 'none';
+            tenantTab.classList.add('active');
+            accountTab.classList.remove('active');
+            if(currentTenantId) renderTenantTable(currentTenantId);
+        }
+
+        function showAccountView() {
+            // Secondary tab switching logic
+            accountView.style.display = 'block';
+            tenantView.style.display = 'none';
+            accountTab.classList.add('active');
+            tenantTab.classList.remove('active');
+            
+            if (!currentTenantId) {
+                accountSearch.disabled = true;
+                accountTitle.textContent = 'Tenant Not Selected';
+                accountStatusText.textContent = 'Please select an organization in the tenant selection area first.';
+                accountTable.style.display = 'none';
+            } else if (!currentAccountId) {
+                accountSearch.disabled = false;
+                accountTitle.textContent = 'Ready to Select Account...';
+                accountStatusText.textContent = `2000 accounts available within ${allTenants.find(t => t.id === currentTenantId).name}. Click or start typing to search.`;
+                accountTable.style.display = 'none';
+            } else {
+                renderAccountTable(currentAccountId);
+            }
+        }
+
+
+        // --- E. TENANT SELECTION LOGIC ---
+
+        function handleTenantSelect(tenantId, tenantName) {
+            currentTenantId = tenantId;
+            currentAccountId = null; 
+
+            selectedTenantDisplay.textContent = `Current Tenant: ${tenantName} (${tenantId})`;
+            tenantSearch.value = tenantName; 
+            tenantSearchResults.innerHTML = ''; 
+
+            generateTenantAccounts(tenantId);
+            renderTenantTable(tenantId);
+
+            // Reset Account Services tab UX
+            accountSearch.disabled = false;
+            accountSearch.value = ''; 
+            accountTable.style.display = 'none';
+            accountTitle.textContent = 'Ready to Select Account...';
+            accountStatusText.textContent = `2000 accounts available within ${tenantName}. Click or start typing to search.`;
+            accountTableBody.innerHTML = '';
+
+            showTenantView(); // Go to Tenant Services view
+        }
+
+        function renderTenantTable(tenantId) {
+            const data = getTenantServices(tenantId);
+            let html = '';
+
+            data.forEach(service => {
+                const statusClass = service.status === 'Active' ? 'status-active' : 'status-inactive';
+                let deployClass = service.deploy === 'Successful' ? 'deploy-success' : service.deploy === 'Failed' ? 'deploy-failed' : '';
+                const checkedAttr = service.enabled ? 'checked' : '';
+
+                html += `
+                    <tr>
+                        <td>${service.name}</td>
+                        <td><span class="${statusClass}">${service.status}</span></td>
+                        <td class="${deployClass}">${service.deploy || ''}</td>
+                        <td><label class="switch"><input type="checkbox" ${checkedAttr}><span class="slider"></span></label></td>
+                    </tr>
+                `;
+            });
+
+            tenantTableBody.innerHTML = html;
+            tenantServiceInfo.textContent = `Global service configurations for the currently selected tenant.`;
+        }
+
+        function handleTenantSearchInput() {
+            const query = tenantSearch.value.toLowerCase().trim();
+            tenantSearchResults.innerHTML = '';
+            
+            const isDropdownClick = query.length === 0 && document.activeElement === tenantSearch;
+
+            if (query.length < 2 && !isDropdownClick) {
+                if (query.length > 0) {
+                     tenantSearchResults.innerHTML = `<div class="no-results">Type 2 or more characters to search...</div>`;
+                }
+                return;
+            }
+
+            const filteredTenants = allTenants.filter(tenant => 
+                tenant.id.toLowerCase().includes(query) || 
+                tenant.name.toLowerCase().includes(query)
+            );
+
+            const resultsToShow = isDropdownClick ? filteredTenants.slice(0, 15) : filteredTenants.slice(0, 15);
+
+            if (resultsToShow.length === 0) {
+                tenantSearchResults.innerHTML = `<div class="no-results">No tenants found matching "${query}"</div>`;
+                return;
+            }
+
+            resultsToShow.forEach(tenant => {
+                const div = document.createElement('div');
+                div.className = 'search-result-item';
+                div.innerHTML = `
+                    <span>${tenant.name}</span>
+                    <span class="search-result-id">${tenant.id}</span>
+                `;
+                div.dataset.tenantId = tenant.id;
+
+                div.addEventListener('click', () => {
+                    handleTenantSelect(tenant.id, tenant.name);
+                });
+                tenantSearchResults.appendChild(div);
+            });
+        }
+
+
+        // --- F. ACCOUNT SELECTION LOGIC ---
+        
+        function renderAccountTable(accountId) {
+            if (!accountId) return;
+            
+            currentAccountId = accountId;
+            const data = getAccountData(accountId);
+            let html = '';
+
+            data.services.forEach(service => {
+                const statusClass = service.status === 'Active' ? 'status-active' : 'status-inactive';
+                let deployClass = service.deploy === 'Successful' ? 'deploy-success' : service.deploy === 'Failed' ? 'deploy-failed' : '';
+                const checkedAttr = service.enabled ? 'checked' : '';
+
+                html += `
+                    <tr>
+                        <td>${service.name} <span style="font-size: 0.8em; color: #999;">${service.type}</span></td>
+                        <td><span class="${statusClass}">${service.status}</span></td>
+                        <td class="${deployClass}">${service.deploy || ''}</td>
+                        <td>
+                            <label class="switch"><input type="checkbox" ${checkedAttr}><span class="slider"></span></label>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            const teamName = data.name.split(':').length > 1 ? data.name.split(':').pop().trim() : 'Service';
+            accountTitle.textContent = `Services for ${data.name}`;
+            accountStatusText.textContent = `Configuration and settings for the ${teamName} team.`;
+            accountTableBody.innerHTML = html;
+            
+            accountSearch.value = data.name;
+            accountTable.style.display = 'table';
+            searchResults.innerHTML = ''; 
+        }
+
+        function handleAccountSearchInput() {
+            if (!currentTenantId) return; 
+
+            const query = accountSearch.value.toLowerCase().trim();
+            searchResults.innerHTML = '';
+            const isDropdownClick = query.length === 0 && document.activeElement === accountSearch;
+            let accountsToShow = [];
+            
+            if (query.length < 2 && !isDropdownClick) {
+                if (query.length > 0) {
+                     searchResults.innerHTML = `<div class="no-results">Type 2 or more characters to search...</div>`;
+                }
+                return;
+            }
+
+            if (isDropdownClick && query.length === 0) {
+                let startIndex = 0;
+                
+                if (currentAccountId) {
+                    const currentIndex = allAccounts.findIndex(a => a.id === currentAccountId);
+                    startIndex = currentIndex + 1; 
+                }
+                
+                const endIndex = startIndex + 5;
+                accountsToShow = allAccounts.slice(startIndex, endIndex);
+
+                if (accountsToShow.length === 0) {
+                     searchResults.innerHTML = `<div class="no-results">No subsequent accounts found.</div>`;
+                     return;
+                }
+
+            } else {
+                const filteredAccounts = allAccounts.filter(account => 
+                    account.id.toLowerCase().includes(query) || 
+                    account.name.toLowerCase().includes(query)
+                );
+                accountsToShow = filteredAccounts.slice(0, 15); 
+                
+                if (accountsToShow.length === 0) {
+                    searchResults.innerHTML = `<div class="no-results">No accounts found matching "${query}"</div>`;
+                    return;
+                }
+            }
+            
+            accountsToShow.forEach(account => {
+                const div = document.createElement('div');
+                div.className = 'search-result-item';
+                div.innerHTML = `
+                    <span>${account.name}</span>
+                    <span class="search-result-id">${account.id.split('-A')[1]}</span>
+                `; 
+                div.dataset.accountId = account.id;
+
+                div.addEventListener('click', () => {
+                    renderAccountTable(account.id);
+                });
+                searchResults.appendChild(div);
+            });
+        }
+        
+        // --- G. EVENT LISTENERS & INITIALIZATION ---
+
+        // Primary Tab Listeners
+        primaryTabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                switchPrimaryTab(e.target.id.replace('tab-', ''));
+            });
+        });
+
+        // Secondary Tab Listeners
+        tenantTab.addEventListener('click', showTenantView);
+        accountTab.addEventListener('click', showAccountView);
+
+        // Tenant Search Listeners
+        tenantSearch.addEventListener('input', handleTenantSearchInput);
+        tenantSearch.addEventListener('focus', handleTenantSearchInput);
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('#tenant-search-container')) {
+                tenantSearchResults.innerHTML = '';
+            }
+        });
+
+        // Account Search Listeners
+        accountSearch.addEventListener('input', handleAccountSearchInput);
+        accountSearch.addEventListener('focus', handleAccountSearchInput);
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('#search-container')) {
+                searchResults.innerHTML = '';
+            }
+        });
+
+        // Initialize the view on the "Services" tab, with the default secondary tab ("Tenant Services") visible
+        switchPrimaryTab('services'); 
+    });
+</script>
+</body>
+</html>
