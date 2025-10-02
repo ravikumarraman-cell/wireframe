@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Service Based Launchpad Console</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<style>
+:root{
+  --bg:#f5f8fb;--panel:#ffffff;--panel-accent:#f0f4f8;--panel-hover:#e9eef3;
+  --border:#d7e1ea;--border-soft:#e4edf3;
+  --text:#1d2a33;--text-soft:#556672;
+  --accent:#0b63c7;--accent-hover:#094f9f;
+  --success:#1b7f3c;--danger:#c23c2a;--inactive:#6f7b86;
+  --focus-ring:0 0 0 3px rgba(11,99,199,.45);
+  --radius:18px;--shadow:0 4px 14px -6px rgba(0,0,0,.12),0 2px 6px -3px rgba(0,0,0,.06);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:15px;
+}
+*{box-sizing:border-box;}
+.visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:0;overflow:hidden;clip:rect(1px,1px,1px,1px);clip-path:inset(50%);white-space:nowrap;border:0;}
+body{margin:0;background:linear-gradient(180deg,#fafcfe 0%,var(--bg) 220px);color:var(--text);line-height:1.45;min-height:100vh;display:flex;-webkit-font-smoothing:antialiased;}
+.wrapper{flex:1;display:grid;grid-template-columns:260px 1fr;gap:1.4rem;padding:1.4rem 1.6rem 2.2rem;max-width:1600px;margin:0 auto;width:100%;}
+.left-col{display:flex;flex-direction:column;gap:1.4rem;}
+@media (max-width:980px){.wrapper{grid-template-columns:1fr;gap:1rem;}.right-col{display:flex;flex-direction:column;gap:1.4rem;}}
+.tile{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem 1.4rem 1.35rem;display:flex;flex-direction:column;gap:.9rem;box-shadow:var(--shadow);}
+.tile-header{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;}
+.tile-header h2{font-size:1.05rem;margin:0;}
+.small-note{font-size:.6rem;color:var(--text-soft);margin:0;}
+nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.55rem;}
+nav a{display:flex;align-items:center;gap:.55rem;background:var(--panel-accent);border:1px solid var(--border-soft);padding:.7rem .85rem;font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:12px;transition:.16s;color:var(--text);text-decoration:none;}
+nav a span.icon{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;opacity:.85;font-size:.9rem;}
+nav a[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 3px 10px -4px rgba(0,0,0,.25);}
+nav a:not([aria-current="page"]):hover:not(.disabled){background:#e6eef5;}
+nav a.disabled{opacity:.45;cursor:not-allowed;pointer-events:none;filter:grayscale(.25);}
+.status-block{display:flex;flex-wrap:wrap;gap:1rem;}
+.status-pill{background:var(--success);color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.07em;padding:.55rem .9rem;border-radius:999px;display:inline-flex;align-items:center;gap:.4rem;text-transform:uppercase;box-shadow:0 2px 6px -3px rgba(0,0,0,.3);transition:.25s;}
+.status-pill.off{background:#88949d;}
+.status-meta{display:flex;flex-direction:column;gap:.45rem;font-size:.65rem;color:var(--text-soft);max-width:640px;line-height:1.3;}
+.table-tools{display:flex;flex-wrap:wrap;gap:.55rem;align-items:center;margin:0 0 .4rem;}
+.table-tools input[type=search],
+.table-tools select{font-size:.62rem;padding:.5rem .6rem;border:1px solid var(--border);background:var(--panel-accent);border-radius:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;min-width:150px;cursor:pointer;}
+.table-tools input[type=search]{text-transform:none;min-width:220px;font-weight:500;letter-spacing:.01em;}
+.table-tools input[type=search]::placeholder{color:var(--text-soft);font-weight:400;letter-spacing:.02em;text-transform:none;}
+.table-tools input:focus,
+.table-tools select:focus{outline:none;box-shadow:var(--focus-ring);background:var(--panel);}
+.clear-filters{background:var(--panel-accent);border:1px solid var(--border);padding:.48rem .8rem;font-size:.55rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:9px;cursor:pointer;}
+.clear-filters:hover{background:var(--panel-hover);}
+.clear-filters:focus-visible{outline:none;box-shadow:var(--focus-ring);}
+.svc-count{margin-left:auto;font-size:.55rem;font-weight:600;letter-spacing:.05em;color:var(--text-soft);display:flex;gap:.6rem;flex-wrap:wrap;}
+.svc-count span{display:inline-flex;align-items:center;gap:.25rem;}
+.svc-table{width:100%;border-collapse:collapse;font-size:.66rem;}
+.svc-table caption{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;}
+.svc-table th,.svc-table td{padding:.55rem .7rem;text-align:left;border-bottom:1px solid var(--border-soft);vertical-align:top;}
+.svc-table thead th{background:var(--panel-accent);font-size:.55rem;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:var(--text-soft);position:sticky;top:0;z-index:2;}
+.svc-table tbody tr:hover{background:var(--panel-accent);}
+.pill{display:inline-flex;align-items:center;gap:.35rem;font-size:.55rem;font-weight:600;letter-spacing:.05em;padding:4px 10px 5px;border-radius:999px;text-transform:uppercase;line-height:1;}
+.pill.status-active{background:rgba(27,127,60,.15);color:var(--success);border:1px solid rgba(27,127,60,.35);}
+.pill.status-inactive{background:#e5e9ed;color:var(--inactive);border:1px solid #d2d8de;}
+.icon-inline{display:inline-flex;align-items:center;gap:4px;font-weight:600;line-height:1;}
+.icon-inline svg{width:12px;height:12px;display:block;}
+.deploy-tag,.level-tag{background:none;border:none;padding:0;font-size:.55rem;letter-spacing:.05em;text-transform:uppercase;font-weight:600;display:inline-flex;align-items:center;gap:4px;}
+.deploy-tag.success{color:var(--success);}
+.deploy-tag.fail{color:var(--danger);}
+.deploy-tag.empty{color:var(--inactive);}
+.level-tag.tenant{color:var(--accent);}
+.level-tag.account{color:var(--inactive);}
+.desc-cell{max-width:280px;line-height:1.3;}
+footer{position:fixed;bottom:0;left:0;width:100%;text-align:center;font-size:.55rem;padding:.6rem .4rem .7rem;color:var(--text-soft);background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.7));backdrop-filter:blur(6px);border-top:1px solid var(--border);}
+:focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:8px;}
+.toggle-btn{position:relative;display:inline-flex;align-items:center;width:46px;height:22px;border:1px solid #b9c4cc;background:#c8d1d8;border-radius:999px;cursor:pointer;padding:0;transition:.25s;}
+.toggle-btn[aria-checked="true"]{background:var(--success);border-color:var(--success);}
+.toggle-btn span.knob{position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:.25s;}
+.toggle-btn[aria-checked="true"] span.knob{transform:translateX(24px);}
+.toggle-btn:focus-visible{outline:none;}
+.toggle-btn .vis-label{position:absolute;inset:0;font-size:0;overflow:hidden;}
+.title-cluster{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;}
+.lp-toggle-wrapper{display:flex;align-items:center;gap:.55rem;font-size:.55rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft);}
+.lp-toggle{position:relative;display:inline-flex;align-items:center;width:60px;height:28px;border:1px solid #b9c4cc;background:#c8d1d8;border-radius:999px;cursor:pointer;padding:0;transition:.28s;}
+.lp-toggle[aria-checked="true"]{background:var(--success);border-color:var(--success);}
+.lp-toggle .knob{position:absolute;top:2px;left:2px;width:24px;height:24px;background:#fff;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:.28s;}
+.lp-toggle[aria-checked="true"] .knob{transform:translateX(32px);}
+.lp-toggle[disabled]{opacity:.45;cursor:not-allowed;filter:grayscale(.3);}
+.restricted-note{font-size:.6rem;margin:0;color:var(--danger);font-weight:600;letter-spacing:.04em;}
+body.launchpad-disabled .toggle-btn{opacity:.45;pointer-events:none;}
+body.launchpad-disabled .svc-table tbody tr{opacity:.7;}
+.context-fields{display:flex;flex-direction:column;gap:.9rem;}
+.context-field label{display:block;font-size:.55rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-soft);margin:0 0 .35rem;}
+.context-field select{width:100%;font-size:.7rem;padding:.55rem .65rem;border:1px solid var(--border);border-radius:10px;background:var(--panel-accent);font-weight:600;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;}
+.context-field select:focus-visible{outline:none;box-shadow:var(--focus-ring);}
+body:not(.show-enable-col) th.col-enable,body:not(.show-enable-col) td.col-enable{display:none;}
+.fade-in{animation:fade .18s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+.empty-row td{padding:1.1rem .7rem;font-size:.6rem;color:var(--text-soft);text-align:center;}
+.badge-inline{display:inline-block;background:var(--panel-accent);border:1px solid var(--border-soft);padding:2px 6px;border-radius:6px;font-size:.55rem;font-weight:600;letter-spacing:.05em;}
+</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="left-col">
+      <aside class="tile" aria-label="Primary navigation">
+        <div class="tile-header">
+          <h2 style="font-size:1rem;">Navigation</h2>
+        </div>
+        <p class="small-note">Other sections are disabled in this prototype.</p>
+        <nav aria-label="Main">
+          <ul>
+            <li><a class="disabled" aria-disabled="true" tabindex="-1"><span class="icon">🏢</span>Tenant Details</a></li>
+            <li><a class="disabled" aria-disabled="true" tabindex="-1"><span class="icon">🛡️</span>Attestation Details</a></li>
+            <li><a class="disabled" aria-disabled="true" tabindex="-1"><span class="icon">🔍</span>Prisma Details</a></li>
+            <li><a href="#launchpad" id="nav-launchpad" aria-current="page"><span class="icon">🧩</span>Launchpad</a></li>
+            <li><a class="disabled" aria-disabled="true" tabindex="-1"><span class="icon">📜</span>Attestation Log</a></li>
+          </ul>
+        </nav>
+      </aside>
+
+      <section class="tile" id="tile-context" aria-labelledby="context-title">
+        <div class="tile-header">
+          <h2 id="context-title">Context</h2>
+        </div>
+        <div class="context-fields">
+          <div class="context-field">
+            <label for="tenant-type-select">Tenant Type</label>
+            <select id="tenant-type-select">
+              <option value="Managed">Managed</option>
+              <option value="Restricted">Restricted</option>
+              <option value="Partially Managed">Partially Managed</option>
+              <option value="Unmanaged" selected>Unmanaged</option>
+            </select>
+          </div>
+          <div class="context-field">
+            <label for="role-select">Role</label>
+            <select id="role-select">
+              <option value="Read Only">Read Only</option>
+              <option value="Admin" selected>Admin</option>
+            </select>
+          </div>
+        </div>
+        <p class="small-note" style="margin-top:-.3rem;">Enable column: Admin + (Unmanaged | Partially Managed)</p>
+        <p class="restricted-note" id="restricted-note" hidden>Restricted tenant: Launchpad disabled & configuration hidden.</p>
+      </section>
+    </div>
+
+    <div class="right-col" style="display:flex;flex-direction:column;gap:1.4rem;">
+      <section class="tile" id="tile-status" aria-labelledby="status-title">
+        <div class="tile-header">
+          <div class="title-cluster">
+            <h2 id="status-title">Service Based Launchpad Status</h2>
+            <span class="status-pill" id="lp-status-pill" aria-live="polite">Enabled</span>
+          </div>
+          <div class="lp-toggle-wrapper">
+            <span class="lp-toggle-label">Enable Launchpad</span>
+            <button type="button" id="lp-toggle" class="lp-toggle" role="switch" aria-checked="true" aria-label="Disable Launchpad">
+              <span class="knob"></span>
+            </button>
+          </div>
+        </div>
+        <div class="status-block">
+          <div class="status-meta">
+            <p style="margin:0;">Access discovery & configuration for Prisma and platform services in this tenant context.</p>
+            <p style="margin:0;">Tenant ID: <strong>3018088537494</strong></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="tile" id="tile-config" aria-labelledby="config-title">
+        <div class="tile-header">
+          <h2 id="config-title">Service Configuration</h2>
+        </div>
+
+        <div class="table-tools" id="svc-tools">
+          <input id="svc-search" type="search" placeholder="Search services..." aria-label="Search services">
+          <select id="filter-status" aria-label="Filter by status">
+            <option value="all" selected>Status: All</option>
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
+          </select>
+          <select id="filter-deploy" aria-label="Filter by deployment">
+            <option value="all" selected>Deployment: All</option>
+            <option value="successful">Successful</option>
+            <option value="failed">Failed</option>
+            <option value="nodata">No Data</option>
+          </select>
+          <select id="sort-services" aria-label="Sort services">
+            <option value="name-asc" selected>Sort: Name A→Z</option>
+            <option value="name-desc">Name Z→A</option>
+            <option value="status-active-first">Status (Active First)</option>
+            <option value="deployment">Deployment State</option>
+            <option value="level-tenant-first">Level (Tenant First)</option>
+          </select>
+          <div class="svc-count" id="svc-count" aria-live="polite"></div>
+          <button type="button" id="clear-filters" class="clear-filters" hidden>Clear / Reset</button>
+        </div>
+
+        <table class="svc-table" aria-describedby="config-title">
+          <caption>List of services with status and deployment metadata</caption>
+          <thead>
+            <tr>
+              <th scope="col">Service Name</th>
+              <th scope="col">Status</th>
+              <th scope="col">Deployment</th>
+              <th scope="col">Level</th>
+              <th scope="col">Description</th>
+              <th scope="col" class="col-enable" id="enable-col-header">Enable</th>
+            </tr>
+          </thead>
+          <tbody id="svc-tbody"></tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <footer>Prototype • Accessible interactions • Optimized updates</footer>
+
+  <div id="change-announcer" class="visually-hidden" aria-live="polite"></div>
+
+<script>
+(function(){
+  const tbody = document.getElementById('svc-tbody');
+  const roleSelect = document.getElementById('role-select');
+  const tenantTypeSelect = document.getElementById('tenant-type-select');
+  const restrictedNote = document.getElementById('restricted-note');
+  const tileConfig = document.getElementById('tile-config');
+  const lpToggle = document.getElementById('lp-toggle');
+  const lpStatusPill = document.getElementById('lp-status-pill');
+
+  const searchInput = document.getElementById('svc-search');
+  const filterStatus = document.getElementById('filter-status');
+  const filterDeploy = document.getElementById('filter-deploy');
+  const sortSelect = document.getElementById('sort-services');
+  const clearBtn = document.getElementById('clear-filters');
+  const countBox = document.getElementById('svc-count');
+  const announcer = document.getElementById('change-announcer');
+
+  /* Data */
+  const services = [
+    { name:' Prisma CSPM', status:true,  deployment:'Successful', level:'Tenant',  description:'Cloud Security Posture management' },
+    { name:' Prisma DSPM', status:true,  deployment:'Successful', level:'Account', description:'Data Security Posture Management' },
+    { name:' Prisma CWF',  status:true,  deployment:'Failed',     level:'Tenant',  description:'Cloud Workload Protection' },
+    { name:' Central Logging', status:true, deployment:'Successful', level:'Account', description:'Central Logging & Monitoring' },
+    { name:' Policy Governance', status:false, deployment:'Successful', level:'Tenant', description:'Policy Management & Governance' }
+  ];
+  const extraPool = [
+    { name:'Threat Intel Correlator', deployment:'Successful', level:'Tenant',  description:'Correlates events with threat intel.' },
+    { name:'Cost Anomaly Detector',   deployment:'Successful', level:'Account', description:'Detects unexpected spend spikes.' },
+    { name:'API Usage Profiler',      deployment:'Failed',     level:'Account', description:'Profiles critical API usage.' },
+    { name:'Drift Monitor',           deployment:'Successful', level:'Tenant',  description:'Identifies infra & config drift.' },
+    { name:'Key Rotation Orchestrator',deployment:'Successful',level:'Tenant',  description:'Automates key lifecycle.' },
+    { name:'Secret Scanner',          deployment:'Failed',     level:'Account', description:'Scans artifacts for leaked secrets.' },
+    { name:'Latency Heatmapper',      deployment:'Successful', level:'Account', description:'Aggregates latency metrics.' },
+    { name:'Patch Advisory Feed',     deployment:'',           level:'Tenant',  description:'Upstream patch advisories.' },
+    { name:'Data Lineage Tracker',    deployment:'Successful', level:'Tenant',  description:'Builds lineage graphs.' },
+    { name:'IAM Entitlement Auditor', deployment:'Successful', level:'Account', description:'Evaluates effective IAM entitlements.' },
+    { name:'Compliance Drift Analyzer',  deployment:'', level:'Tenant',  description:'Highlights policy drift from approved baselines.' },
+    { name:'Event Correlation Engine',   deployment:'Successful', level:'Account', description:'Correlates multi-source operational events.' },
+    { name:'Cost Efficiency Advisor',    deployment:'Failed',     level:'Tenant',  description:'Recommends right‑sizing & idle asset cleanup.' },
+    { name:'Service Dependency Mapper',  deployment:'Successful', level:'Account', description:'Generates runtime dependency graphs.' },
+    { name:'Quarantine Orchestrator',    deployment:'',           level:'Tenant',  description:'Isolates non‑compliant resources automatically.' },
+    { name:'Data Retention Enforcer',    deployment:'Successful', level:'Tenant',  description:'Applies retention & purge schedules.' },
+    { name:'Latency Anomaly Sentinel',   deployment:'Failed',     level:'Account', description:'Detects sudden latency deviations.' },
+    { name:'Credential Exposure Monitor',deployment:'', level:'Account', description:'Flags exposed or weak credentials.' },
+    { name:'Region Failover Simulator',  deployment:'Successful', level:'Tenant',  description:'Simulates regional failover readiness.' },
+    { name:'Configuration Blueprint Validator', deployment:'',    level:'Tenant',  description:'Validates stacks against golden blueprints.' }
+  ];
+  seedExtras(7);
+  // Trim leading spaces in names (cleanup)
+  services.forEach(s=>s.name = s.name.trim());
+
+  function seedExtras(count){
+    const existing = new Set(services.map(s=>s.name));
+    const pool = extraPool.filter(s=>!existing.has(s.name));
+    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+    pool.slice(0,count).forEach(s=>services.push({...s,status:Math.random()<0.7}));
+  }
+
+  const ICON = {
+    check:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M3 8.5 6.5 12 13 4"/></svg>',
+    cross:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="M3 3l10 10M13 3 3 13"/></svg>',
+    circle:'<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="currentColor" opacity=".35"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>'
+  };
+
+  const pillStatus = on =>
+    `<span class="pill ${on?'status-active':'status-inactive'}">${on?ICON.check:ICON.cross}<span>${on?'Active':'Inactive'}</span></span>`;
+
+  function deploymentTag(state){
+    if(state==='Successful') return `<span class="deploy-tag success icon-inline" aria-label="Deployment Successful">${ICON.check}Successful</span>`;
+    if(state==='Failed') return `<span class="deploy-tag fail icon-inline" aria-label="Deployment Failed">${ICON.cross}Failed</span>`;
+    return `<span class="deploy-tag empty icon-inline" aria-label="No Deployment Data">${ICON.circle}No Data</span>`;
+  }
+
+  function levelTag(lvl){
+    const tenantIcon='<svg viewBox="0 0 16 16"><path fill="currentColor" d="M2 2h12v12H2z" opacity=".35"/><path fill="currentColor" d="M4 4h2v2H4zm0 3h2v2H4zm0 3h2v2H4zm3-6h2v2H7zm0 3h2v2H7zm0 3h2v2H7zm3-6h2v2h-2zm0 3h2v2h-2z"/></svg>';
+    const accountIcon='<svg viewBox="0 0 16 16"><circle cx="8" cy="5" r="3" fill="currentColor"/><path fill="currentColor" d="M2.5 13.5c0-3 2.4-5 5.5-5s5.5 2 5.5 5v.5h-11z" opacity=".85"/></svg>';
+    const isTenant = lvl.toLowerCase()==='tenant';
+    return `<span class="level-tag ${isTenant?'tenant':'account'} icon-inline" aria-label="Level ${isTenant?'Tenant':'Account'}">${isTenant?tenantIcon:accountIcon}${lvl}</span>`;
+  }
+
+  /* State */
+  let searchTerm = '';
+  let statusFilterVal = 'all';
+  let deployFilterVal = 'all';
+  let sortMode = 'name-asc';
+
+  function enableColumnAllowed(){
+    const r = roleSelect.value;
+    const t = tenantTypeSelect.value;
+    return r==='Admin' && (t==='Unmanaged' || t==='Partially Managed');
+  }
+
+  function applyEnableColumnState(){
+    document.body.classList.toggle('show-enable-col', enableColumnAllowed());
+  }
+
+  let prevLaunchpadEnabled = true;
+  function setLaunchpadEnabled(on){
+    lpToggle.setAttribute('aria-checked', on);
+    lpToggle.setAttribute('aria-label', (on?'Disable':'Enable')+' Launchpad');
+    lpStatusPill.textContent = on?'Enabled':'Disabled';
+    lpStatusPill.classList.toggle('off', !on);
+    document.body.classList.toggle('launchpad-disabled', !on);
+  }
+
+  function updateToolsDisabled(disabled){
+    [searchInput, filterStatus, filterDeploy, sortSelect, clearBtn].forEach(el=>{
+      if(!el) return;
+      el.disabled = disabled;
+      if(disabled) el.setAttribute('aria-disabled','true'); else el.removeAttribute('aria-disabled');
+    });
+  }
+
+  function applyRestrictedState(){
+    const isRestricted = tenantTypeSelect.value === 'Restricted';
+    tileConfig.hidden = isRestricted;
+    restrictedNote.hidden = !isRestricted;
+    updateToolsDisabled(isRestricted);
+    if(isRestricted){
+      prevLaunchpadEnabled = lpToggle.getAttribute('aria-checked')==='true';
+      setLaunchpadEnabled(false);
+      lpToggle.disabled = true;
+    } else {
+      lpToggle.disabled = false;
+      setLaunchpadEnabled(prevLaunchpadEnabled);
+    }
+    if(isRestricted){
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">Configuration hidden for <strong>Restricted</strong> tenant.</td></tr>`;
+      countBox.textContent = '';
+    }
+  }
+
+  function buildRow(s,allow){
+    return `<tr data-service="${s.name}">
+      <th scope="row"><span class="svc-name">${s.name}</span></th>
+      <td data-col="status">${pillStatus(s.status)}</td>
+      <td>${deploymentTag(s.deployment)}</td>
+      <td>${levelTag(s.level)}</td>
+      <td class="desc-cell">${s.description}</td>
+      ${allow?`<td class="col-enable">
+          <button type="button"
+            class="toggle-btn"
+            role="switch"
+            aria-checked="${s.status}"
+            data-service="${s.name}"
+            aria-label="${s.status?'Disable':'Enable'} ${s.name}">
+            <span class="knob"></span>
+            <span class="vis-label">${s.status?'Enabled':'Disabled'}</span>
+          </button>
+        </td>`:'<td class="col-enable" hidden></td>'}
+    </tr>`;
+  }
+
+  function filteredAndSorted(){
+    let list = services.filter(s=>{
+      const txt = (s.name + ' ' + s.description).toLowerCase();
+      if(searchTerm && !txt.includes(searchTerm)) return false;
+      if(statusFilterVal === 'active' && !s.status) return false;
+      if(statusFilterVal === 'inactive' && s.status) return false;
+      if(deployFilterVal === 'successful' && s.deployment !== 'Successful') return false;
+      if(deployFilterVal === 'failed' && s.deployment !== 'Failed') return false;
+      if(deployFilterVal === 'nodata' && s.deployment !== '') return false;
+      return true;
+    });
+
+    const weight = v => v==='Successful'?2 : v==='Failed'?1 : 0;
+    const cmp = {
+      'name-asc':(a,b)=>a.name.localeCompare(b.name),
+      'name-desc':(a,b)=>b.name.localeCompare(a.name),
+      'status-active-first':(a,b)=> (b.status - a.status) || a.name.localeCompare(b.name),
+      'deployment':(a,b)=> (weight(b.deployment)-weight(a.deployment)) || a.name.localeCompare(b.name),
+      'level-tenant-first':(a,b)=>{
+        const w = v => v==='Tenant'?1:0;
+        return (w(b.level)-w(a.level)) || a.name.localeCompare(b.name);
+      }
+    };
+    list.sort(cmp[sortMode] || cmp['name-asc']);
+    return list;
+  }
+
+  function updateCounts(visible){
+    const total = services.length;
+    const activeTotal = services.filter(s=>s.status).length;
+    countBox.innerHTML = `
+      <span>Visible: ${visible}/${total}</span>
+      <span>Active: ${activeTotal}</span>
+      <span>Inactive: ${total-activeTotal}</span>`;
+  }
+
+  function updateClearButton(){
+    const dirty = !!searchTerm ||
+      statusFilterVal!=='all' ||
+      deployFilterVal!=='all' ||
+      sortMode!=='name-asc';
+    clearBtn.hidden = !dirty;
+  }
+
+  function renderTable(){
+    const allow = enableColumnAllowed() && tenantTypeSelect.value !== 'Restricted';
+    if(tenantTypeSelect.value === 'Restricted'){applyRestrictedState();return;}
+    const list = filteredAndSorted();
+    tbody.innerHTML = list.length
+      ? list.map(s=>buildRow(s,allow)).join('')
+      : `<tr class="empty-row"><td colspan="6">No services match current filters.</td></tr>`;
+    updateCounts(list.length);
+    updateClearButton();
+  }
+
+  /* Events */
+  lpToggle.addEventListener('click', ()=>{
+    if(lpToggle.disabled) return;
+    const on = lpToggle.getAttribute('aria-checked') !== 'true';
+    setLaunchpadEnabled(on);
+    prevLaunchpadEnabled = on;
+  });
+
+  tbody.addEventListener('click', e=>{
+    const btn = e.target.closest('.toggle-btn');
+    if(!btn) return;
+    if(document.body.classList.contains('launchpad-disabled')) return;
+    if(!enableColumnAllowed()) return;
+    if(tenantTypeSelect.value === 'Restricted') return;
+    const svcName = btn.dataset.service;
+    const svc = services.find(s=>s.name === svcName);
+    if(!svc) return;
+    svc.status = !svc.status;
+    btn.setAttribute('aria-checked', svc.status);
+    btn.setAttribute('aria-label', (svc.status?'Disable':'Enable')+' '+svc.name);
+    btn.querySelector('.vis-label').textContent = svc.status?'Enabled':'Disabled';
+    const row = btn.closest('tr');
+    row.querySelector('[data-col="status"]').innerHTML = pillStatus(svc.status);
+    announcer.textContent = `${svc.name} ${svc.status?'enabled':'disabled'}`;
+    updateCounts(filteredAndSorted().length);
+  });
+
+  roleSelect.addEventListener('change', ()=>{
+    applyEnableColumnState();
+    renderTable();
+  });
+
+  tenantTypeSelect.addEventListener('change', ()=>{
+    applyEnableColumnState();
+    applyRestrictedState();
+    if(tenantTypeSelect.value !== 'Restricted') renderTable();
+  });
+
+  let searchTimer;
+  searchInput.addEventListener('input', ()=>{
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(()=>{
+      searchTerm = searchInput.value.trim().toLowerCase();
+      renderTable();
+    },150);
+  });
+
+  filterStatus.addEventListener('change', ()=>{
+    statusFilterVal = filterStatus.value;
+    renderTable();
+  });
+
+  filterDeploy.addEventListener('change', ()=>{
+    deployFilterVal = filterDeploy.value;
+    renderTable();
+  });
+
+  sortSelect.addEventListener('change', ()=>{
+    sortMode = sortSelect.value;
+    renderTable();
+  });
+
+  clearBtn.addEventListener('click', ()=>{
+    searchTerm=''; statusFilterVal='all'; deployFilterVal='all'; sortMode='name-asc';
+    searchInput.value='';
+    filterStatus.value='all';
+    filterDeploy.value='all';
+    sortSelect.value='name-asc';
+    renderTable();
+    searchInput.focus();
+  });
+
+  /* Init */
+  applyEnableColumnState();
+  applyRestrictedState();
+  if(tenantTypeSelect.value !== 'Restricted') renderTable();
+  setLaunchpadEnabled(true);
+})();
+</script>
+</body>
+</html>
